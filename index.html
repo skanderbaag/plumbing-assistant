@@ -37,75 +37,65 @@
     </div>
 
     <script>
-        const API_KEY = 'REPLACE_ME' ;
         const messagesEl = document.getElementById('messages');
-        const inputEl = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
+const inputEl = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
 
-        const systemPrompt = `You are an expert plumbing assistant for a small plumbing company in Ohio. 
-You have deep knowledge of:
-- Ohio Revised Plumbing Code
-- International Plumbing Code (IPC)
-- DWV (drain, waste, vent) systems
-- Water supply lines
-- Gas lines
-- Pipe sizing, fittings, and materials (PVC, CPVC, copper, PEX, cast iron)
-- Hole saw sizing for various pipe ODs
-- Proper strapping and support intervals by material
-- Best practices for residential and commercial plumbing
+let conversationHistory = [];
 
-Always give practical, job-site-ready answers. Be concise but thorough. 
-If code sections are relevant, cite them. 
-If you're unsure about a specific local amendment, say so and recommend verifying with the AHJ.`;
+async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
 
-        let conversationHistory = [];
+    inputEl.value = '';
+    sendBtn.disabled = true;
 
-        async function sendMessage() {
-            const text = inputEl.value.trim();
-            if (!text) return;
+    addMessage(text, 'user');
+    conversationHistory.push({ role: 'user', content: text });
 
-            inputEl.value = '';
-            sendBtn.disabled = true;
+    const loadingEl = addMessage('Thinking...', 'assistant loading');
 
-            addMessage(text, 'user');
-            conversationHistory.push({ role: 'user', content: text });
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: conversationHistory })
+        });
 
-            const loadingEl = addMessage('Thinking...', 'assistant loading');
-
-            try {
-                const response = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: conversationHistory })
-});
-
-const data = await response.json();
-const reply = data.reply;
-
-                loadingEl.textContent = reply;
-                loadingEl.className = 'message assistant';
-                conversationHistory.push({ role: 'assistant', content: reply });
-
-            } catch (err) {
-                loadingEl.textContent = 'Something went wrong. Check your connection and try again.';
-                loadingEl.className = 'message assistant';
-            }
-
+        const data = await response.json();
+        
+        if (data.error) {
+            loadingEl.textContent = 'Error: ' + data.error;
+            loadingEl.className = 'message assistant';
             sendBtn.disabled = false;
-            inputEl.focus();
+            return;
         }
 
-        function addMessage(text, className) {
-            const el = document.createElement('div');
-            el.className = `message ${className}`;
-            el.textContent = text;
-            messagesEl.appendChild(el);
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-            return el;
-        }
+        const reply = data.reply;
+        loadingEl.textContent = reply;
+        loadingEl.className = 'message assistant';
+        conversationHistory.push({ role: 'assistant', content: reply });
 
-        sendBtn.addEventListener('click', sendMessage);
-        inputEl.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+    } catch (err) {
+        loadingEl.textContent = 'Something went wrong. Check your connection and try again.';
+        loadingEl.className = 'message assistant';
+    }
+
+    sendBtn.disabled = false;
+    inputEl.focus();
+}
+
+function addMessage(text, className) {
+    const el = document.createElement('div');
+    el.className = `message ${className}`;
+    el.textContent = text;
+    messagesEl.appendChild(el);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return el;
+}
+
+sendBtn.addEventListener('click', sendMessage);
+inputEl.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
     </script>
 </body>
 </html>
