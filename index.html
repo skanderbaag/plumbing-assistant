@@ -114,6 +114,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
   .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
   .overlay.visible { display: block; }
 }
+.tool-card { background:white; border:1.5px solid #e5e7eb; border-radius:12px; padding:14px; cursor:pointer; transition:all 0.15s; display:flex; flex-direction:column; gap:8px; }
+.tool-card:hover { border-color:#0a1f44; transform:translateY(-1px); }
+.tool-card.available { border-color:#d1fae5; }
+.tool-card.checked-out { border-color:#fee2e2; }
+.tool-name { font-size:14px; font-weight:600; color:#0a1f44; line-height:1.3; }
+.tool-category { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.05em; }
+.tool-status { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 8px; border-radius:20px; }
+.tool-status.available { background:#d1fae5; color:#065f46; }
+.tool-status.checked-out { background:#fee2e2; color:#991b1b; }
+.tool-who { font-size:12px; color:#6b7280; }
+  
 </style>
 </head>
 <body>
@@ -236,14 +247,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
       </div>
     </div>
 
-    <!-- SHOP TOOLS -->
-    <div class="channel-view" id="ch-tools">
-      <div class="placeholder">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-        <h3>Shop tools coming soon</h3>
-        <p>Quick reference charts for pipe sizing, hole saws, fittings, and strapping intervals.</p>
-      </div>
+<!-- SHOP TOOLS -->
+<div class="channel-view" id="ch-tools">
+  <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+    <div>
+      <div style="font-size:13px;color:#6b7280;">Tap any tool to check it out or return it</div>
     </div>
+    <button onclick="loadTools()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+  </div>
+  <div id="tools-grid" style="flex:1;overflow-y:auto;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;align-content:start;"></div>
+</div>
 
   </div>
 </div>
@@ -291,6 +304,7 @@ async function doLogin() {
   document.getElementById('sidebar-role').textContent = data.role.charAt(0).toUpperCase() + data.role.slice(1);
   loadConversation();
   loadUpdates();
+  loadTools();
   if (['manager','GM','Owner'].includes(data.role)) {
     document.getElementById('post-form-area').style.display = 'block';
   }
@@ -426,6 +440,60 @@ document.getElementById('user-input').addEventListener('keypress', e => { if (e.
 document.getElementById('pin-input').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
 
 loadPlumbers();
+
+async function loadTools() {
+    const grid = document.getElementById('tools-grid');
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading tools...</div>';
+    try {
+        const response = await fetch('/api/tools');
+        const tools = await response.json();
+        if (!tools.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No tools found.</div>'; return; }
+        let currentCategory = '';
+        grid.innerHTML = '';
+        tools.forEach(tool => {
+            if (tool.category !== currentCategory) {
+                currentCategory = tool.category;
+                const label = document.createElement('div');
+                label.style.cssText = 'grid-column:1/-1;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;padding-top:4px;';
+                label.textContent = currentCategory;
+                grid.appendChild(label);
+            }
+            const isOut = !!tool.checked_out_by;
+            const card = document.createElement('div');
+            card.className = `tool-card ${isOut ? 'checked-out' : 'available'}`;
+            card.innerHTML = `
+                <div class="tool-category">${tool.category}</div>
+                <div class="tool-name">${tool.name}</div>
+                <div class="tool-status ${isOut ? 'checked-out' : 'available'}">
+                    <span style="width:7px;height:7px;border-radius:50%;background:${isOut ? '#ef4444' : '#10b981'};display:inline-block;"></span>
+                    ${isOut ? 'Checked out' : 'Available'}
+                </div>
+                ${isOut ? `<div class="tool-who">${tool.checked_out_by}</div>` : ''}
+            `;
+            card.onclick = () => handleToolTap(tool);
+            grid.appendChild(card);
+        });
+    } catch(err) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading tools. Try refreshing.</div>';
+    }
+}
+
+async function handleToolTap(tool) {
+    const isOut = !!tool.checked_out_by;
+    if (isOut) {
+        if (tool.checked_out_by !== currentUser.name) {
+            alert(`This tool is checked out by ${tool.checked_out_by}. Only they can return it.`);
+            return;
+        }
+        if (!confirm(`Return "${tool.name}"?`)) return;
+        await fetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: tool.id, action: 'return' }) });
+    } else {
+        if (!confirm(`Check out "${tool.name}"?`)) return;
+        await fetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: tool.id, action: 'checkout', plumber_name: currentUser.name }) });
+    }
+    loadTools();
+}
+  
 </script>
 </body>
 </html>
