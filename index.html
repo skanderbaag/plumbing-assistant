@@ -631,30 +631,39 @@ function showQuestion() {
     document.getElementById('quiz-question').textContent = q.question;
     document.getElementById('quiz-explanation').style.display = 'none';
     document.getElementById('quiz-next-btn').style.display = 'none';
+
+    const correctText = q[`option_${q.correct_answer.toLowerCase()}`];
+    const allOptions = [q.option_a, q.option_b, q.option_c, q.option_d];
+    const shuffled = allOptions.sort(() => Math.random() - 0.5);
+
     const opts = document.getElementById('quiz-options');
     opts.innerHTML = '';
-    [['A', q.option_a], ['B', q.option_b], ['C', q.option_c], ['D', q.option_d]].forEach(([letter, text]) => {
+    shuffled.forEach((text, i) => {
+        const letter = ['A','B','C','D'][i];
+        const isCorrect = text === correctText;
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = `${letter}. ${text}`;
-        btn.onclick = () => answerQuestion(letter, btn);
+        btn.dataset.correct = isCorrect;
+        btn.onclick = () => answerQuestion(isCorrect, btn);
         opts.appendChild(btn);
     });
-}
 
-function answerQuestion(selected, btn) {
-    const q = quizQuestions[currentQuestionIndex];
-    const correct = selected === q.correct_answer;
-    if (correct) quizScore++;
+function answerQuestion(isCorrect, btn) {
+    if (isCorrect) quizScore++;
     document.querySelectorAll('.option-btn').forEach(b => {
         b.onclick = null;
-        const letter = b.textContent.charAt(0);
-        if (letter === q.correct_answer) b.classList.add('correct');
-        else if (b === btn && !correct) b.classList.add('incorrect');
-        else b.classList.add('reveal');
+        b.classList.add('reveal');
     });
+    btn.classList.remove('reveal');
+    btn.classList.add(isCorrect ? 'correct' : 'incorrect');
+    if (!isCorrect) {
+        document.querySelectorAll('.option-btn').forEach(b => {
+            if (b.dataset.correct === 'true') b.classList.add('correct');
+        });
+    }
     const expEl = document.getElementById('quiz-explanation');
-    expEl.textContent = q.explanation;
+    expEl.textContent = quizQuestions[currentQuestionIndex].explanation;
     expEl.style.display = 'block';
     document.getElementById('quiz-next-btn').textContent = currentQuestionIndex < quizQuestions.length - 1 ? 'Next question' : 'See results';
     document.getElementById('quiz-next-btn').style.display = 'block';
