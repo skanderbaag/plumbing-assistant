@@ -124,13 +124,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .tool-status.available { background:#d1fae5; color:#065f46; }
 .tool-status.checked-out { background:#fee2e2; color:#991b1b; }
 .tool-who { font-size:12px; color:#6b7280; }
-
-.option-btn { background:white; border:1.5px solid #e5e7eb; border-radius:10px; padding:12px 14px; font-size:14px; color:#1f2937; cursor:pointer; text-align:left; transition:all 0.15s; }
-.option-btn:hover { border-color:#0a1f44; background:#f8faff; }
-.option-btn.correct { background:#d1fae5; border-color:#10b981; color:#065f46; }
-.option-btn.incorrect { background:#fee2e2; border-color:#ef4444; color:#991b1b; }
-.option-btn.reveal { background:#f0f9ff; border-color:#0a1f44; }
-
+  
 </style>
 </head>
 <body>
@@ -218,68 +212,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     </div>
 
     <!-- TRAINING -->
-    <!-- TRAINING -->
-<div class="channel-view" id="ch-training">
-  <div style="flex:1;overflow-y:auto;" id="training-container">
-
-    <!-- HOME -->
-    <div id="training-home" style="padding:20px;display:flex;flex-direction:column;gap:16px;">
-      <div style="background:#0a1f44;border-radius:14px;padding:20px;color:white;">
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:8px;">Tip of the day</div>
-        <div id="tip-text" style="font-size:14px;line-height:1.7;opacity:0.9;">Loading today's tip...</div>
-      </div>
-      <div style="font-size:15px;font-weight:600;color:#0a1f44;">Select your level</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div onclick="selectLevel('apprentice')" style="background:white;border:1.5px solid #e5e7eb;border-radius:14px;padding:20px;cursor:pointer;text-align:center;transition:all 0.15s;" onmouseover="this.style.borderColor='#0a1f44'" onmouseout="this.style.borderColor='#e5e7eb'">
-          <div style="font-size:28px;margin-bottom:8px;">🔧</div>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;">Apprentice</div>
-          <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Tools, materials, terminology</div>
-        </div>
-        <div onclick="selectLevel('journeyman')" style="background:white;border:1.5px solid #e5e7eb;border-radius:14px;padding:20px;cursor:pointer;text-align:center;transition:all 0.15s;" onmouseover="this.style.borderColor='#0a1f44'" onmouseout="this.style.borderColor='#e5e7eb'">
-          <div style="font-size:28px;margin-bottom:8px;">⚙️</div>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;">Journeyman</div>
-          <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Code, fixtures, advanced skills</div>
-        </div>
+    <div class="channel-view" id="ch-training">
+      <div class="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <h3>Training coming soon</h3>
+        <p>Study guides, quizzes, and progress tracking will live here. Check back soon.</p>
       </div>
     </div>
-
-    <!-- TOPIC SELECT -->
-    <div id="training-topics" style="padding:20px;display:none;flex-direction:column;gap:12px;">
-      <button onclick="showTrainingHome()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;margin-bottom:4px;">← Back</button>
-      <div style="font-size:15px;font-weight:600;color:#0a1f44;" id="topics-title">Choose a topic</div>
-      <div id="topics-list" style="display:flex;flex-direction:column;gap:10px;"></div>
-    </div>
-
-    <!-- QUIZ -->
-    <div id="training-quiz" style="padding:20px;display:none;flex-direction:column;gap:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <button onclick="showTopics()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;padding:0;">← Back</button>
-        <div style="font-size:12px;color:#9ca3af;" id="quiz-progress">Question 1 of 10</div>
-      </div>
-      <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;padding:20px;">
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;" id="quiz-topic-label"></div>
-        <div style="font-size:15px;font-weight:600;color:#0a1f44;line-height:1.5;margin-bottom:16px;" id="quiz-question"></div>
-        <div id="quiz-options" style="display:flex;flex-direction:column;gap:8px;"></div>
-      </div>
-      <div id="quiz-explanation" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px;font-size:13px;color:#0c4a6e;line-height:1.6;display:none;"></div>
-      <button id="quiz-next-btn" onclick="nextQuestion()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;display:none;">Next question</button>
-    </div>
-
-    <!-- RESULTS -->
-    <div id="training-results" style="padding:20px;display:none;flex-direction:column;gap:16px;align-items:center;text-align:center;">
-      <div style="font-size:48px;" id="results-emoji"></div>
-      <div style="font-size:24px;font-weight:700;color:#0a1f44;" id="results-score"></div>
-      <div style="font-size:14px;color:#6b7280;" id="results-message"></div>
-      <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;padding:16px;width:100%;">
-        <div style="font-size:13px;color:#6b7280;margin-bottom:4px;">Topic</div>
-        <div style="font-size:15px;font-weight:600;color:#0a1f44;" id="results-topic"></div>
-      </div>
-      <button onclick="showTopics()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;width:100%;">Take another quiz</button>
-      <button onclick="showTrainingHome()" style="background:#f4f6f9;color:#374151;border:none;border-radius:10px;padding:14px;font-size:15px;cursor:pointer;width:100%;">Back to home</button>
-    </div>
-
-  </div>
-</div>
 
     <!-- SHOP UPDATES -->
     <div class="channel-view" id="ch-updates">
@@ -366,7 +305,6 @@ async function doLogin() {
   loadConversation();
   loadUpdates();
   loadTools();
-  loadTip();
   if (['manager','GM','Owner'].includes(data.role)) {
     document.getElementById('post-form-area').style.display = 'block';
   }
@@ -554,138 +492,6 @@ async function handleToolTap(tool) {
         await fetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: tool.id, action: 'checkout', plumber_name: currentUser.name }) });
     }
     loadTools();
-}
-
-let currentLevel = '';
-let currentTopic = '';
-let quizQuestions = [];
-let currentQuestionIndex = 0;
-let quizScore = 0;
-
-const apprenticeTopics = ['Basic terminology', 'Tool identification', 'Pipe materials and sizing'];
-const journeymanTopics = ['Code knowledge', 'Fixture brands', 'Advanced techniques'];
-
-async function loadTip() {
-    try {
-        const res = await fetch('/api/training?action=tip');
-        const data = await res.json();
-        document.getElementById('tip-text').textContent = data.tip;
-    } catch(e) {
-        document.getElementById('tip-text').textContent = 'When soldering copper, always let the fitting do the work — heat the fitting, not the solder. The solder should flow toward the heat.';
-    }
-}
-
-function selectLevel(level) {
-    currentLevel = level;
-    showTopics();
-}
-
-function showTopics() {
-    const topics = currentLevel === 'apprentice' ? apprenticeTopics : journeymanTopics;
-    document.getElementById('topics-title').textContent = currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1) + ' — Choose a topic';
-    const list = document.getElementById('topics-list');
-    list.innerHTML = '';
-    topics.forEach(topic => {
-        const btn = document.createElement('button');
-        btn.style.cssText = 'background:white;border:1.5px solid #e5e7eb;border-radius:12px;padding:16px;cursor:pointer;text-align:left;font-size:14px;font-weight:600;color:#0a1f44;transition:all 0.15s;';
-        btn.textContent = topic;
-        btn.onmouseover = () => btn.style.borderColor = '#0a1f44';
-        btn.onmouseout = () => btn.style.borderColor = '#e5e7eb';
-        btn.onclick = () => startQuiz(topic);
-        list.appendChild(btn);
-    });
-    document.getElementById('training-home').style.display = 'none';
-    document.getElementById('training-topics').style.display = 'flex';
-    document.getElementById('training-quiz').style.display = 'none';
-    document.getElementById('training-results').style.display = 'none';
-}
-
-function showTrainingHome() {
-    document.getElementById('training-home').style.display = 'flex';
-    document.getElementById('training-topics').style.display = 'none';
-    document.getElementById('training-quiz').style.display = 'none';
-    document.getElementById('training-results').style.display = 'none';
-}
-
-async function startQuiz(topic) {
-    currentTopic = topic;
-    quizScore = 0;
-    currentQuestionIndex = 0;
-    document.getElementById('training-topics').style.display = 'none';
-    document.getElementById('training-quiz').style.display = 'flex';
-    try {
-        const res = await fetch(`/api/training?action=questions&level=${currentLevel}&topic=${encodeURIComponent(topic)}`);
-        quizQuestions = await res.json();
-        if (!quizQuestions.length) { alert('No questions found for this topic yet. Check back soon!'); showTopics(); return; }
-        showQuestion();
-    } catch(e) {
-        alert('Error loading questions. Try again.');
-        showTopics();
-    }
-}
-
-function showQuestion() {
-    const q = quizQuestions[currentQuestionIndex];
-    document.getElementById('quiz-progress').textContent = `Question ${currentQuestionIndex + 1} of ${quizQuestions.length}`;
-    document.getElementById('quiz-topic-label').textContent = currentTopic;
-    document.getElementById('quiz-question').textContent = q.question;
-    document.getElementById('quiz-explanation').style.display = 'none';
-    document.getElementById('quiz-next-btn').style.display = 'none';
-    const opts = document.getElementById('quiz-options');
-    opts.innerHTML = '';
-    [['A', q.option_a], ['B', q.option_b], ['C', q.option_c], ['D', q.option_d]].forEach(([letter, text]) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.textContent = `${letter}. ${text}`;
-        btn.onclick = () => answerQuestion(letter, btn);
-        opts.appendChild(btn);
-    });
-}
-
-function answerQuestion(selected, btn) {
-    const q = quizQuestions[currentQuestionIndex];
-    const correct = selected === q.correct_answer;
-    if (correct) quizScore++;
-    document.querySelectorAll('.option-btn').forEach(b => {
-        b.onclick = null;
-        const letter = b.textContent.charAt(0);
-        if (letter === q.correct_answer) b.classList.add('correct');
-        else if (b === btn && !correct) b.classList.add('incorrect');
-        else b.classList.add('reveal');
-    });
-    const expEl = document.getElementById('quiz-explanation');
-    expEl.textContent = q.explanation;
-    expEl.style.display = 'block';
-    document.getElementById('quiz-next-btn').textContent = currentQuestionIndex < quizQuestions.length - 1 ? 'Next question' : 'See results';
-    document.getElementById('quiz-next-btn').style.display = 'block';
-}
-
-function nextQuestion() {
-    currentQuestionIndex++;
-    if (currentQuestionIndex >= quizQuestions.length) { showResults(); return; }
-    showQuestion();
-}
-
-async function showResults() {
-    const pct = Math.round((quizScore / quizQuestions.length) * 100);
-    document.getElementById('training-quiz').style.display = 'none';
-    document.getElementById('training-results').style.display = 'flex';
-    document.getElementById('results-score').textContent = `${quizScore} / ${quizQuestions.length} — ${pct}%`;
-    document.getElementById('results-topic').textContent = `${currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1)} · ${currentTopic}`;
-    let emoji = '💪', message = '';
-    if (pct === 100) { emoji = '🏆'; message = 'Perfect score! Outstanding work.'; }
-    else if (pct >= 80) { emoji = '⭐'; message = 'Great job! You know your stuff.'; }
-    else if (pct >= 60) { emoji = '👍'; message = 'Good effort. Review the ones you missed and try again.'; }
-    else { emoji = '📚'; message = 'Keep studying — you\'ll get there. Try this topic again.'; }
-    document.getElementById('results-emoji').textContent = emoji;
-    document.getElementById('results-message').textContent = message;
-    try {
-        await fetch('/api/training?action=result', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plumber_id: currentUser.id, level: currentLevel, topic: currentTopic, score: quizScore, total: quizQuestions.length })
-        });
-    } catch(e) {}
 }
   
 </script>
