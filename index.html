@@ -343,6 +343,7 @@ async function doLogin() {
   loadUpdates();
   loadTools();
   loadTip();
+  loadVehicles();
   if (['manager','GM','Owner'].includes(data.role)) {
     document.getElementById('post-form-area').style.display = 'block';
   }
