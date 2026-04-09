@@ -458,10 +458,79 @@ async function doLogin() {
   loadTools();
   loadTip();
   loadVehicles();
-  if (['manager','GM','Owner'].includes(data.role)) {
-    document.getElementById('post-form-area').style.display = 'block';
+  async function loadVehicles() {
+  const grid = document.getElementById('vehicles-grid');
+  grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Loading fleet...</div>';
+  try {
+    const res = await fetch('/api/vehicles?action=vehicles');
+    allVehicles = await res.json();
+
+    const isAdmin = ['manager','GM','Owner'].includes(currentUser.role);
+    const visibleVehicles = isAdmin
+      ? allVehicles
+      : allVehicles.filter(v => v.assigned_driver === currentUser.name);
+
+    if (visibleVehicles.length === 0) {
+      grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">No vehicle assigned to you yet. Contact your manager.</div>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    for (const v of visibleVehicles) {
+      const history = await fetch(`/api/vehicles?action=history&vehicle_id=${v.id}`).then(r => r.json());
+      const issues = await fetch(`/api/vehicles?action=issues&vehicle_id=${v.id}`).then(r => r.json());
+      const status = getFleetStatus(v, history);
+
+      const statusColors = {
+        good: { border: '#10b981', bg: '#d1fae5', text: '#065f46', label: 'Current' },
+        warning: { border: '#f59e0b', bg: '#fef3c7', text: '#92400e', label: 'Due soon' },
+        overdue: { border: '#ef4444', bg: '#fee2e2', text: '#991b1b', label: 'Overdue' }
+      };
+      const sc = statusColors[status.level];
+
+      const card = document.createElement('div');
+      card.style.cssText = `background:white;border:1px solid #e5e7eb;border-left:4px solid ${sc.border};border-radius:12px;padding:16px;cursor:pointer;`;
+
+      const nextDue = getNextDueService(v, history);
+
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#0a1f44;">${v.name}</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${v.year} ${v.make} ${v.model}</div>
+          </div>
+          <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:${sc.bg};color:${sc.text};">${sc.label}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:14px;font-weight:600;color:#374151;">${v.current_mileage.toLocaleString()} miles</div>
+          ${issues.length > 0 ? `<span style="font-size:12px;color:#dc2626;font-weight:600;">⚠ ${issues.length} open issue${issues.length > 1 ? 's' : ''}</span>` : ''}
+        </div>
+        ${nextDue ? `<div style="margin-top:8px;font-size:12px;color:#6b7280;">Next up: <span style="font-weight:600;color:${sc.border};">${nextDue}</span></div>` : ''}
+        ${v.assigned_driver && isAdmin ? `<div style="margin-top:6px;font-size:12px;color:#9ca3af;">Driver: ${v.assigned_driver}</div>` : ''}
+      `;
+      card.onclick = () => openVehicleDetail(v);
+      grid.appendChild(card);
+    }
+  } catch(e) {
+    grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Error loading fleet. Try refreshing.</div>';
   }
-  addMessage('Hey ' + data.name + '! What can I help you with today? Ask me anything about code, materials, fittings, or best practices.', 'ai');
+}
+
+function getNextDueService(vehicle, history) {
+  let soonest = null;
+  let soonestMiles = Infinity;
+  for (const [service, interval] of Object.entries(MAINTENANCE_INTERVALS)) {
+    const last = history.find(h => h.service_type === service);
+    const lastMileage = last ? last.mileage_at_service : 0;
+    const milesLeft = interval - (vehicle.current_mileage - lastMileage);
+    if (milesLeft < soonestMiles) {
+      soonestMiles = milesLeft;
+      soonest = milesLeft <= 0
+        ? `${service} overdue by ${Math.abs(milesLeft).toLocaleString()} miles`
+        : `${service} in ${milesLeft.toLocaleString()} miles`;
+    }
+  }
+  return soonest;
 }
 
 function doLogout() {
