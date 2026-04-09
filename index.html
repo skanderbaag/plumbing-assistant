@@ -109,6 +109,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
   .menu-btn { display: flex; align-items: center; justify-content: center; }
   .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
   .overlay.visible { display: block; }
+.vehicle-card { background:white; border:1.5px solid #e5e7eb; border-radius:12px; padding:16px; cursor:pointer; transition:all 0.15s; }
+.vehicle-card:hover { border-color:#0a1f44; }
+.vehicle-card.status-good { border-left:4px solid #10b981; }
+.vehicle-card.status-warning { border-left:4px solid #f59e0b; }
+.vehicle-card.status-overdue { border-left:4px solid #ef4444; }
+.vehicle-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.vehicle-name { font-size:15px; font-weight:700; color:#0a1f44; }
+.vehicle-info { font-size:12px; color:#9ca3af; margin-top:2px; }
+.vehicle-mileage { font-size:13px; font-weight:600; color:#374151; }
+.status-pill { font-size:11px; font-weight:600; padding:3px 8px; border-radius:10px; }
+.status-pill.good { background:#d1fae5; color:#065f46; }
+.status-pill.warning { background:#fef3c7; color:#92400e; }
+.status-pill.overdue { background:#fee2e2; color:#991b1b; }
+.maintenance-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid #e5e7eb; font-size:13px; }
+.maintenance-row:last-child { border-bottom:none; }
+.history-card { background:white; border:1px solid #e5e7eb; border-radius:10px; padding:14px; }
+.history-type { font-size:14px; font-weight:600; color:#0a1f44; }
+.history-meta { font-size:12px; color:#9ca3af; margin-top:3px; }
+.history-notes { font-size:13px; color:#374151; margin-top:6px; }
+.issue-card { background:#fff5f5; border:1px solid #fecaca; border-radius:10px; padding:14px; }
+.issue-desc { font-size:14px; color:#1f2937; }
+.issue-meta { font-size:12px; color:#9ca3af; margin-top:4px; }
 }
 </style>
 </head>
@@ -269,13 +291,105 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     </div>
 
     <!-- VEHICLES -->
-    <div class="channel-view" id="ch-vehicles">
-      <div class="placeholder">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM18.5 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
-        <h3>Vehicle maintenance coming soon</h3>
-        <p>Log oil changes, tire rotations, and service history for each truck.</p>
+<div class="channel-view" id="ch-vehicles">
+  <div style="flex:1;overflow-y:auto;" id="vehicles-container">
+
+    <!-- FLEET DASHBOARD -->
+    <div id="vehicles-home" style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:15px;font-weight:600;color:#0a1f44;">Fleet overview</div>
+        <button onclick="loadVehicles()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+      </div>
+      <div id="vehicles-grid" style="display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
+
+    <!-- TRUCK DETAIL -->
+    <div id="vehicle-detail" style="padding:20px;display:none;flex-direction:column;gap:14px;">
+      <button onclick="showVehiclesHome()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back to fleet</button>
+      <div style="background:#0a1f44;border-radius:14px;padding:18px;color:white;">
+        <div style="font-size:18px;font-weight:700;" id="detail-truck-name"></div>
+        <div style="font-size:13px;opacity:0.6;margin-top:2px;" id="detail-truck-info"></div>
+        <div style="margin-top:14px;display:flex;gap:16px;">
+          <div>
+            <div style="font-size:11px;opacity:0.5;text-transform:uppercase;letter-spacing:0.05em;">Current mileage</div>
+            <div style="font-size:22px;font-weight:700;margin-top:2px;" id="detail-mileage"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAINTENANCE STATUS -->
+      <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;">
+        <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em;">Maintenance status</div>
+        <div id="maintenance-status" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
+      <!-- ACTION BUTTONS -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="showUpdateMileage()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Update mileage</button>
+        <button onclick="showLogService()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Log service</button>
+        <button onclick="showReportIssue()" style="background:white;color:#0a1f44;border:1.5px solid #0a1f44;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Report issue</button>
+        <button onclick="showServiceHistory()" style="background:white;color:#0a1f44;border:1.5px solid #0a1f44;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">View history</button>
+      </div>
+
+      <!-- OPEN ISSUES -->
+      <div id="open-issues-section" style="display:none;">
+        <div style="font-size:13px;font-weight:600;color:#dc2626;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Open issues</div>
+        <div id="open-issues-list" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
     </div>
+
+    <!-- UPDATE MILEAGE FORM -->
+    <div id="vehicle-mileage-form" style="padding:20px;display:none;flex-direction:column;gap:14px;">
+      <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+      <div style="font-size:15px;font-weight:600;color:#0a1f44;">Update mileage</div>
+      <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:13px;color:#6b7280;">Current recorded mileage: <span id="mileage-form-current" style="font-weight:600;color:#0a1f44;"></span></div>
+        <input type="number" id="new-mileage-input" placeholder="Enter current odometer reading" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:15px;outline:none;width:100%;" />
+        <button onclick="submitMileageUpdate()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Save mileage</button>
+      </div>
+    </div>
+
+    <!-- LOG SERVICE FORM -->
+    <div id="vehicle-service-form" style="padding:20px;display:none;flex-direction:column;gap:14px;">
+      <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+      <div style="font-size:15px;font-weight:600;color:#0a1f44;">Log service</div>
+      <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <select id="service-type-select" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:14px;outline:none;background:white;width:100%;">
+          <option value="">Select service type...</option>
+          <option value="Oil change">Oil change</option>
+          <option value="Tire rotation">Tire rotation</option>
+          <option value="New tires">New tires</option>
+          <option value="Air filter">Air filter</option>
+          <option value="Brake inspection">Brake inspection</option>
+          <option value="Transmission service">Transmission service</option>
+          <option value="Other">Other</option>
+        </select>
+        <input type="number" id="service-mileage-input" placeholder="Mileage at time of service" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:15px;outline:none;width:100%;" />
+        <textarea id="service-notes-input" placeholder="Notes (optional)" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:14px;outline:none;width:100%;min-height:80px;resize:vertical;font-family:inherit;"></textarea>
+        <button onclick="submitServiceLog()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Save service record</button>
+      </div>
+    </div>
+
+    <!-- REPORT ISSUE FORM -->
+    <div id="vehicle-issue-form" style="padding:20px;display:none;flex-direction:column;gap:14px;">
+      <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+      <div style="font-size:15px;font-weight:600;color:#0a1f44;">Report an issue</div>
+      <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:13px;color:#6b7280;">Describe what you noticed — even small things are worth logging.</div>
+        <textarea id="issue-description-input" placeholder="e.g. Slow leak on rear passenger tire, pulling slightly to the left..." style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:14px;outline:none;width:100%;min-height:100px;resize:vertical;font-family:inherit;"></textarea>
+        <button onclick="submitIssueReport()" style="background:#dc2626;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Submit issue report</button>
+      </div>
+    </div>
+
+    <!-- SERVICE HISTORY -->
+    <div id="vehicle-history" style="padding:20px;display:none;flex-direction:column;gap:14px;">
+      <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+      <div style="font-size:15px;font-weight:600;color:#0a1f44;" id="history-title">Service history</div>
+      <div id="history-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+
+  </div>
+</div>
 
     <!-- SHOP TOOLS -->
     <div class="channel-view" id="ch-tools">
@@ -651,6 +765,232 @@ document.getElementById('user-input').addEventListener('keypress', e => { if (e.
 document.getElementById('pin-input').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
 
 loadPlumbers();
+
+const MAINTENANCE_INTERVALS = {
+  'Oil change': 5000,
+  'Tire rotation': 6000,
+  'Air filter': 15000,
+  'Brake inspection': 20000,
+  'Transmission service': 30000
+};
+
+let currentVehicle = null;
+let allVehicles = [];
+
+async function loadVehicles() {
+  const grid = document.getElementById('vehicles-grid');
+  grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Loading fleet...</div>';
+  try {
+    const res = await fetch('/api/vehicles?action=vehicles');
+    allVehicles = await res.json();
+    grid.innerHTML = '';
+    for (const v of allVehicles) {
+      const history = await fetch(`/api/vehicles?action=history&vehicle_id=${v.id}`).then(r => r.json());
+      const issues = await fetch(`/api/vehicles?action=issues&vehicle_id=${v.id}`).then(r => r.json());
+      const status = getFleetStatus(v, history);
+      const card = document.createElement('div');
+      card.className = `vehicle-card status-${status.level}`;
+      card.innerHTML = `
+        <div class="vehicle-header">
+          <div>
+            <div class="vehicle-name">${v.name}</div>
+            <div class="vehicle-info">${v.year} ${v.make} ${v.model}</div>
+          </div>
+          <span class="status-pill ${status.level}">${status.label}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+          <div class="vehicle-mileage">${v.current_mileage.toLocaleString()} miles</div>
+          ${issues.length > 0 ? `<span style="font-size:12px;color:#dc2626;font-weight:600;">${issues.length} open issue${issues.length > 1 ? 's' : ''}</span>` : ''}
+        </div>
+        ${v.assigned_driver ? `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Driver: ${v.assigned_driver}</div>` : ''}
+      `;
+      card.onclick = () => openVehicleDetail(v);
+      grid.appendChild(card);
+    }
+  } catch(e) {
+    grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Error loading fleet. Try refreshing.</div>';
+  }
+}
+
+function getFleetStatus(vehicle, history) {
+  let worstLevel = 'good';
+  for (const [service, interval] of Object.entries(MAINTENANCE_INTERVALS)) {
+    const last = history.find(h => h.service_type === service);
+    const lastMileage = last ? last.mileage_at_service : 0;
+    const milesSince = vehicle.current_mileage - lastMileage;
+    const pct = milesSince / interval;
+    if (pct >= 1) { worstLevel = 'overdue'; break; }
+    if (pct >= 0.85 && worstLevel === 'good') worstLevel = 'warning';
+  }
+  const labels = { good: 'Current', warning: 'Due soon', overdue: 'Overdue' };
+  return { level: worstLevel, label: labels[worstLevel] };
+}
+
+async function openVehicleDetail(vehicle) {
+  currentVehicle = vehicle;
+  showVehicleDetail();
+  document.getElementById('detail-truck-name').textContent = vehicle.name;
+  document.getElementById('detail-truck-info').textContent = `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+  document.getElementById('detail-mileage').textContent = vehicle.current_mileage.toLocaleString() + ' miles';
+  const history = await fetch(`/api/vehicles?action=history&vehicle_id=${vehicle.id}`).then(r => r.json());
+  const issues = await fetch(`/api/vehicles?action=issues&vehicle_id=${vehicle.id}`).then(r => r.json());
+  const statusEl = document.getElementById('maintenance-status');
+  statusEl.innerHTML = '';
+  for (const [service, interval] of Object.entries(MAINTENANCE_INTERVALS)) {
+    const last = history.find(h => h.service_type === service);
+    const lastMileage = last ? last.mileage_at_service : 0;
+    const milesSince = vehicle.current_mileage - lastMileage;
+    const milesLeft = interval - milesSince;
+    const pct = milesSince / interval;
+    let color = '#10b981', statusText = `${milesLeft.toLocaleString()} miles until due`;
+    if (pct >= 1) { color = '#ef4444'; statusText = `${Math.abs(milesLeft).toLocaleString()} miles overdue`; }
+    else if (pct >= 0.85) { color = '#f59e0b'; }
+    const row = document.createElement('div');
+    row.className = 'maintenance-row';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:500;color:#1f2937;">${service}</div>
+        <div style="font-size:11px;color:#9ca3af;">Every ${interval.toLocaleString()} miles · Last at ${lastMileage.toLocaleString()}</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:${color};text-align:right;">${statusText}</div>
+    `;
+    statusEl.appendChild(row);
+  }
+  const issuesSection = document.getElementById('open-issues-section');
+  const issuesList = document.getElementById('open-issues-list');
+  if (issues.length > 0) {
+    issuesSection.style.display = 'block';
+    issuesList.innerHTML = '';
+    issues.forEach(issue => {
+      const card = document.createElement('div');
+      card.className = 'issue-card';
+      const date = new Date(issue.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      card.innerHTML = `
+        <div class="issue-desc">${issue.description}</div>
+        <div class="issue-meta">Reported by ${issue.reported_by} · ${date}</div>
+        ${['manager','GM','Owner'].includes(currentUser.role) ? `<button onclick="resolveIssue('${issue.id}')" style="margin-top:8px;background:#0a1f44;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">Mark resolved</button>` : ''}
+      `;
+      issuesList.appendChild(card);
+    });
+  } else {
+    issuesSection.style.display = 'none';
+  }
+}
+
+function showVehiclesHome() {
+  document.getElementById('vehicles-home').style.display = 'flex';
+  document.getElementById('vehicle-detail').style.display = 'none';
+  document.getElementById('vehicle-mileage-form').style.display = 'none';
+  document.getElementById('vehicle-service-form').style.display = 'none';
+  document.getElementById('vehicle-issue-form').style.display = 'none';
+  document.getElementById('vehicle-history').style.display = 'none';
+}
+
+function showVehicleDetail() {
+  document.getElementById('vehicles-home').style.display = 'none';
+  document.getElementById('vehicle-detail').style.display = 'flex';
+  document.getElementById('vehicle-mileage-form').style.display = 'none';
+  document.getElementById('vehicle-service-form').style.display = 'none';
+  document.getElementById('vehicle-issue-form').style.display = 'none';
+  document.getElementById('vehicle-history').style.display = 'none';
+}
+
+function showUpdateMileage() {
+  document.getElementById('mileage-form-current').textContent = currentVehicle.current_mileage.toLocaleString();
+  document.getElementById('new-mileage-input').value = '';
+  document.getElementById('vehicles-home').style.display = 'none';
+  document.getElementById('vehicle-detail').style.display = 'none';
+  document.getElementById('vehicle-mileage-form').style.display = 'flex';
+}
+
+function showLogService() {
+  document.getElementById('service-mileage-input').value = currentVehicle.current_mileage;
+  document.getElementById('service-notes-input').value = '';
+  document.getElementById('service-type-select').value = '';
+  document.getElementById('vehicles-home').style.display = 'none';
+  document.getElementById('vehicle-detail').style.display = 'none';
+  document.getElementById('vehicle-service-form').style.display = 'flex';
+}
+
+function showReportIssue() {
+  document.getElementById('issue-description-input').value = '';
+  document.getElementById('vehicles-home').style.display = 'none';
+  document.getElementById('vehicle-detail').style.display = 'none';
+  document.getElementById('vehicle-issue-form').style.display = 'flex';
+}
+
+async function showServiceHistory() {
+  document.getElementById('history-title').textContent = `${currentVehicle.name} — Service history`;
+  document.getElementById('vehicles-home').style.display = 'none';
+  document.getElementById('vehicle-detail').style.display = 'none';
+  document.getElementById('vehicle-history').style.display = 'flex';
+  const history = await fetch(`/api/vehicles?action=history&vehicle_id=${currentVehicle.id}`).then(r => r.json());
+  const list = document.getElementById('history-list');
+  if (!history.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">No service records yet.</div>'; return; }
+  list.innerHTML = '';
+  history.forEach(h => {
+    const date = new Date(h.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    card.innerHTML = `
+      <div class="history-type">${h.service_type}</div>
+      <div class="history-meta">${h.mileage_at_service.toLocaleString()} miles · ${h.logged_by} · ${date}</div>
+      ${h.notes ? `<div class="history-notes">${h.notes}</div>` : ''}
+    `;
+    list.appendChild(card);
+  });
+}
+
+async function submitMileageUpdate() {
+  const mileage = parseInt(document.getElementById('new-mileage-input').value);
+  if (!mileage || mileage < currentVehicle.current_mileage) { alert('Please enter a valid mileage higher than the current reading.'); return; }
+  await fetch('/api/vehicles?action=update_mileage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vehicle_id: currentVehicle.id, mileage })
+  });
+  currentVehicle.current_mileage = mileage;
+  alert('Mileage updated!');
+  openVehicleDetail(currentVehicle);
+}
+
+async function submitServiceLog() {
+  const service_type = document.getElementById('service-type-select').value;
+  const mileage_at_service = parseInt(document.getElementById('service-mileage-input').value);
+  const notes = document.getElementById('service-notes-input').value.trim();
+  if (!service_type || !mileage_at_service) { alert('Please select a service type and enter the mileage.'); return; }
+  await fetch('/api/vehicles?action=log_service', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vehicle_id: currentVehicle.id, service_type, mileage_at_service, notes, logged_by: currentUser.name })
+  });
+  currentVehicle.current_mileage = mileage_at_service;
+  alert('Service logged!');
+  openVehicleDetail(currentVehicle);
+}
+
+async function submitIssueReport() {
+  const description = document.getElementById('issue-description-input').value.trim();
+  if (!description) { alert('Please describe the issue.'); return; }
+  await fetch('/api/vehicles?action=report_issue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vehicle_id: currentVehicle.id, description, reported_by: currentUser.name })
+  });
+  alert('Issue reported!');
+  openVehicleDetail(currentVehicle);
+}
+
+async function resolveIssue(issue_id) {
+  if (!confirm('Mark this issue as resolved?')) return;
+  await fetch('/api/vehicles?action=resolve_issue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ issue_id })
+  });
+  openVehicleDetail(currentVehicle);
+}
+  
 </script>
 </body>
 </html>
