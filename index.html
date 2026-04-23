@@ -703,7 +703,7 @@ async function loadVehicles() {
     const res = await fetch('/api/vehicles?action=vehicles');
     allVehicles = await res.json();
     const isAdmin = ['manager','GM','Owner'].includes(currentUser.role);
-    const visible = isAdmin ? allVehicles : allVehicles.filter(v => v.assigned_driver === currentUser.name);
+   const visible = isAdmin ? allVehicles : allVehicles.filter(v => v.name === currentUser.name);
     if (!visible.length) { grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">No vehicle assigned. Contact your manager.</div>'; return; }
     grid.innerHTML = '';
     for (const v of visible) {
