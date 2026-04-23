@@ -108,6 +108,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
   .menu-btn { display: flex; align-items: center; justify-content: center; }
   .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
   .overlay.visible { display: block; }
+
 }
 </style>
 </head>
@@ -188,8 +189,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     <div class="channel-view active" id="ch-assistant">
       <div class="messages" id="messages"></div>
       <div class="chat-input-area">
-        <textarea class="chat-input" id="user-input" placeholder="Ask a plumbing question..." rows="1"></textarea>
-        <button class="send-btn" id="send-btn" onclick="sendMessage()">
+  <input type="file" id="image-input" accept="image/*" capture="environment" style="display:none;" onchange="handleImageSelect(event)" />
+  <button class="img-btn" onclick="document.getElementById('image-input').click()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  </button>
+  <textarea class="chat-input" id="user-input" placeholder="Ask a plumbing question..." rows="1"></textarea>
+  <button class="send-btn" id="send-btn" onclick="sendMessage()">
           <svg viewBox="0 0 24 24"><path d="M2 12L22 2 12 22 10 13 2 12z"/></svg>
         </button>
       </div>
