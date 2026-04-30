@@ -62,12 +62,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .msg.ai .bubble th { background: #f4f6f9; font-weight: 600; }
 .msg.ai .bubble strong { font-weight: 600; }
 .msg.ai .bubble hr { border: none; border-top: 1px solid #e5e7eb; margin: 8px 0; }
-.chat-input-area { background: white; border-top: 1px solid #e5e7eb; padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+.msg.ai .bubble img { max-width: 100%; border-radius: 8px; margin: 4px 0; }
+.chat-input-area { background: white; border-top: 1px solid #e5e7eb; padding: 12px 16px; display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
 .chat-input { flex: 1; background: #f4f6f9; border: 1px solid #e5e7eb; border-radius: 22px; padding: 10px 16px; font-size: 14px; color: #1f2937; outline: none; resize: none; overflow-y: hidden; min-height: 40px; max-height: 120px; line-height: 1.5; font-family: inherit; }
 .chat-input:focus { border-color: #0a1f44; }
 .send-btn { width: 40px; height: 40px; background: #0a1f44; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .send-btn:disabled { background: #9ca3af; cursor: not-allowed; }
 .send-btn svg { width: 16px; height: 16px; fill: white; }
+.img-btn { width: 40px; height: 40px; background: #f4f6f9; border: 1px solid #e5e7eb; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #6b7280; }
+.img-btn:hover { background: #e5e7eb; }
+.image-preview-area { padding: 8px 16px 0; display: none; background: white; }
+.image-preview-inner { position: relative; display: inline-block; }
+.image-preview-inner img { height: 64px; border-radius: 8px; border: 1px solid #e5e7eb; display: block; }
+.image-preview-inner button { position: absolute; top: -6px; right: -6px; background: #ef4444; border: none; border-radius: 50%; width: 18px; height: 18px; color: white; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
 .bulletin-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .update-card { background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 16px; }
 .update-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
@@ -108,12 +115,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
   .menu-btn { display: flex; align-items: center; justify-content: center; }
   .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
   .overlay.visible { display: block; }
-
 }
 </style>
 </head>
 <body>
-
 <div id="login-screen">
   <div class="login-logo">The Local Plumber</div>
   <div class="login-sub">Crew Portal</div>
@@ -128,9 +133,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     <div class="login-error" id="login-error">Incorrect PIN. Try again.</div>
   </div>
 </div>
-
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
-
 <div id="app-shell">
   <div id="sidebar">
     <div class="sidebar-header">
@@ -170,7 +173,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
       <button class="logout-btn" onclick="doLogout()">Sign out</button>
     </div>
   </div>
-
   <div id="main">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:12px;">
@@ -184,22 +186,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
       </div>
       <span class="topbar-tag" id="topbar-tag">Ohio · IPC</span>
     </div>
-
     <!-- ASSISTANT -->
     <div class="channel-view active" id="ch-assistant">
       <div class="messages" id="messages"></div>
+      <div id="image-preview-area" class="image-preview-area">
+        <div class="image-preview-inner">
+          <img id="image-preview" src="" alt="Selected image" />
+          <button onclick="clearImage()">✕</button>
+        </div>
+      </div>
       <div class="chat-input-area">
-  <input type="file" id="image-input" accept="image/*" capture="environment" style="display:none;" onchange="handleImageSelect(event)" />
-  <button class="img-btn" onclick="document.getElementById('image-input').click()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-  </button>
-  <textarea class="chat-input" id="user-input" placeholder="Ask a plumbing question..." rows="1"></textarea>
-  <button class="send-btn" id="send-btn" onclick="sendMessage()">
+        <input type="file" id="image-input" accept="image/*" capture="environment" style="display:none;" onchange="handleImageSelect(event)" />
+        <button class="img-btn" onclick="document.getElementById('image-input').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+        <textarea class="chat-input" id="user-input" placeholder="Ask a plumbing question..." rows="1"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()">
           <svg viewBox="0 0 24 24"><path d="M2 12L22 2 12 22 10 13 2 12z"/></svg>
         </button>
       </div>
     </div>
-
     <!-- TRAINING -->
     <div class="channel-view" id="ch-training">
       <div style="flex:1;overflow-y:auto;">
@@ -253,7 +259,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
         </div>
       </div>
     </div>
-
     <!-- SHOP UPDATES -->
     <div class="channel-view" id="ch-updates">
       <div class="bulletin-area" id="bulletin-area">
@@ -271,7 +276,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
         </div>
       </div>
     </div>
-
     <!-- VEHICLES -->
     <div class="channel-view" id="ch-vehicles">
       <div style="flex:1;overflow-y:auto;" id="vehicles-container">
@@ -351,7 +355,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
         </div>
       </div>
     </div>
-
     <!-- SHOP TOOLS -->
     <div class="channel-view" id="ch-tools">
       <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
@@ -360,16 +363,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
       </div>
       <div id="tools-grid" style="flex:1;overflow-y:auto;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;align-content:start;"></div>
     </div>
-
   </div>
 </div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://dnhcnbloghupybdezuas.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_re8LvhneKPYR-gObFoNUeQ_3NjeoxMY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
 let currentUser = null;
 let conversationHistory = [];
 let currentLevel = '';
@@ -379,7 +379,8 @@ let currentQuestionIndex = 0;
 let quizScore = 0;
 let currentVehicle = null;
 let allVehicles = [];
-
+let pendingImageBase64 = null;
+let pendingImageType = null;
 const MAINTENANCE_INTERVALS = {
   'Oil change': 5000,
   'Tire rotation': 6000,
@@ -387,7 +388,6 @@ const MAINTENANCE_INTERVALS = {
   'Brake inspection': 20000,
   'Transmission service': 30000
 };
-
 const channels = {
   assistant: { title: 'Assistant', sub: 'Ask anything — code, materials, best practices', tag: 'Ohio · IPC' },
   training: { title: 'Training', sub: 'Study guides and knowledge quizzes', tag: 'Knowledge' },
@@ -395,10 +395,8 @@ const channels = {
   vehicles: { title: 'Vehicle maintenance', sub: 'Service logs for each truck', tag: 'Fleet' },
   tools: { title: 'Shop tools', sub: 'Quick reference charts and sizing guides', tag: 'Reference' }
 };
-
 const apprenticeTopics = ['Basic terminology', 'Tool identification', 'Pipe materials and sizing'];
 const journeymanTopics = ['Code knowledge', 'Fixture brands', 'Advanced techniques'];
-
 async function loadPlumbers() {
   const { data } = await sb.from('plumbers').select('name').order('name');
   const sel = document.getElementById('name-select');
@@ -410,7 +408,6 @@ async function loadPlumbers() {
     sel.appendChild(opt);
   });
 }
-
 async function doLogin() {
   const name = document.getElementById('name-select').value;
   const pin = document.getElementById('pin-input').value;
@@ -432,19 +429,20 @@ async function doLogin() {
   if (['manager','GM','Owner'].includes(data.role)) {
     document.getElementById('post-form-area').style.display = 'block';
   }
-  addMessage('Hey ' + data.name + '! What can I help you with today? Ask me anything about code, materials, fittings, or best practices.', 'ai');
+  addMessage('Hey ' + data.name + '! What can I help you with today? Ask me anything about code, materials, fittings, or best practices. You can also tap the camera icon to send a photo of what you\'re working on.', 'ai');
 }
-
 function doLogout() {
   currentUser = null;
   conversationHistory = [];
+  pendingImageBase64 = null;
+  pendingImageType = null;
   document.getElementById('messages').innerHTML = '';
   document.getElementById('pin-input').value = '';
   document.getElementById('name-select').value = '';
+  document.getElementById('image-preview-area').style.display = 'none';
   document.getElementById('app-shell').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
-
 async function loadConversation() {
   const { data } = await sb.from('conversations').select('*').eq('plumber_id', currentUser.id).eq('channel', 'assistant').order('created_at', { ascending: true }).limit(50);
   if (data && data.length > 0) {
@@ -455,11 +453,9 @@ async function loadConversation() {
     });
   }
 }
-
 async function saveMessage(role, content) {
   await sb.from('conversations').insert({ plumber_id: currentUser.id, role, content, channel: 'assistant' });
 }
-
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const text = input.value.trim();
@@ -467,8 +463,6 @@ async function sendMessage() {
   input.value = '';
   input.style.height = 'auto';
   document.getElementById('send-btn').disabled = true;
-
-  // Build the user message content
   let userContent;
   if (pendingImageBase64) {
     userContent = [
@@ -480,12 +474,10 @@ async function sendMessage() {
     userContent = text;
     addMessage(text, 'user');
   }
-
   clearImage();
   conversationHistory.push({ role: 'user', content: userContent });
   saveMessage('user', text || '[image]');
   const loadingEl = addMessage('Thinking...', 'ai');
-
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -504,7 +496,6 @@ async function sendMessage() {
   document.getElementById('send-btn').disabled = false;
   input.focus();
 }
-
 function handleImageSelect(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -519,14 +510,12 @@ function handleImageSelect(event) {
   reader.readAsDataURL(file);
   event.target.value = '';
 }
-
 function clearImage() {
   pendingImageBase64 = null;
   pendingImageType = null;
   document.getElementById('image-preview-area').style.display = 'none';
   document.getElementById('image-preview').src = '';
 }
-
 function addMessage(text, type, scroll=true) {
   const el = document.createElement('div');
   el.className = 'msg ' + type;
@@ -543,7 +532,6 @@ function addMessage(text, type, scroll=true) {
   if (scroll) el.scrollIntoView({ behavior: 'smooth' });
   return el;
 }
-
 async function loadUpdates() {
   const { data } = await sb.from('shop_updates').select('*').order('created_at', { ascending: false });
   const area = document.getElementById('bulletin-area');
@@ -557,11 +545,9 @@ async function loadUpdates() {
     area.appendChild(card);
   });
 }
-
 function togglePostForm() {
   document.getElementById('post-form').classList.toggle('visible');
 }
-
 async function submitUpdate() {
   const title = document.getElementById('post-title').value.trim();
   const content = document.getElementById('post-content').value.trim();
@@ -572,7 +558,6 @@ async function submitUpdate() {
   togglePostForm();
   loadUpdates();
 }
-
 async function loadTools() {
   const grid = document.getElementById('tools-grid');
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading tools...</div>';
@@ -609,7 +594,6 @@ async function loadTools() {
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading tools. Try refreshing.</div>';
   }
 }
-
 async function handleToolTap(tool) {
   const isOut = !!tool.checked_out_by;
   if (isOut) {
@@ -622,7 +606,6 @@ async function handleToolTap(tool) {
   }
   loadTools();
 }
-
 async function loadTip() {
   try {
     const res = await fetch('/api/training?action=tip');
@@ -632,9 +615,7 @@ async function loadTip() {
     document.getElementById('tip-text').textContent = 'When soldering copper, always let the fitting do the work — heat the fitting, not the solder. The solder should flow toward the heat.';
   }
 }
-
 function selectLevel(level) { currentLevel = level; showTopics(); }
-
 function showTopics() {
   const topics = currentLevel === 'apprentice' ? apprenticeTopics : journeymanTopics;
   document.getElementById('topics-title').textContent = currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1) + ' — Choose a topic';
@@ -654,14 +635,12 @@ function showTopics() {
   document.getElementById('training-quiz').style.display = 'none';
   document.getElementById('training-results').style.display = 'none';
 }
-
 function showTrainingHome() {
   document.getElementById('training-home').style.display = 'flex';
   document.getElementById('training-topics').style.display = 'none';
   document.getElementById('training-quiz').style.display = 'none';
   document.getElementById('training-results').style.display = 'none';
 }
-
 async function startQuiz(topic) {
   currentTopic = topic;
   quizScore = 0;
@@ -675,7 +654,6 @@ async function startQuiz(topic) {
     showQuestion();
   } catch(e) { alert('Error loading questions. Try again.'); showTopics(); }
 }
-
 function showQuestion() {
   const q = quizQuestions[currentQuestionIndex];
   document.getElementById('quiz-progress').textContent = `Question ${currentQuestionIndex + 1} of ${quizQuestions.length}`;
@@ -697,7 +675,6 @@ function showQuestion() {
     opts.appendChild(btn);
   });
 }
-
 function answerQuestion(isCorrect, btn) {
   if (isCorrect) quizScore++;
   document.querySelectorAll('.option-btn').forEach(b => {
@@ -710,13 +687,11 @@ function answerQuestion(isCorrect, btn) {
   document.getElementById('quiz-next-btn').textContent = currentQuestionIndex < quizQuestions.length - 1 ? 'Next question' : 'See results';
   document.getElementById('quiz-next-btn').style.display = 'block';
 }
-
 function nextQuestion() {
   currentQuestionIndex++;
   if (currentQuestionIndex >= quizQuestions.length) { showResults(); return; }
   showQuestion();
 }
-
 async function showResults() {
   const pct = Math.round((quizScore / quizQuestions.length) * 100);
   document.getElementById('training-quiz').style.display = 'none';
@@ -738,7 +713,6 @@ async function showResults() {
     });
   } catch(e) {}
 }
-
 async function loadVehicles() {
   const grid = document.getElementById('vehicles-grid');
   grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Loading fleet...</div>';
@@ -746,7 +720,7 @@ async function loadVehicles() {
     const res = await fetch('/api/vehicles?action=vehicles');
     allVehicles = await res.json();
     const isAdmin = ['manager','GM','Owner'].includes(currentUser.role);
-   const visible = isAdmin ? allVehicles : allVehicles.filter(v => v.name === currentUser.name);
+    const visible = isAdmin ? allVehicles : allVehicles.filter(v => v.name === currentUser.name);
     if (!visible.length) { grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">No vehicle assigned. Contact your manager.</div>'; return; }
     grid.innerHTML = '';
     for (const v of visible) {
@@ -770,7 +744,6 @@ async function loadVehicles() {
           ${issues.length > 0 ? `<span style="font-size:12px;color:#dc2626;font-weight:600;">⚠ ${issues.length} open issue${issues.length>1?'s':''}</span>` : ''}
         </div>
         ${nextDue ? `<div style="margin-top:8px;font-size:12px;color:#6b7280;">Next: <span style="font-weight:600;color:${sc.border};">${nextDue}</span></div>` : ''}
-        ${isAdmin && v.assigned_driver ? `<div style="margin-top:6px;font-size:12px;color:#9ca3af;">Driver: ${v.assigned_driver}</div>` : ''}
       `;
       card.onclick = () => openVehicleDetail(v);
       grid.appendChild(card);
@@ -779,7 +752,6 @@ async function loadVehicles() {
     grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Error loading fleet.</div>';
   }
 }
-
 function getFleetStatus(vehicle, history) {
   let worst = 'good';
   for (const [service, interval] of Object.entries(MAINTENANCE_INTERVALS)) {
@@ -791,7 +763,6 @@ function getFleetStatus(vehicle, history) {
   }
   return worst;
 }
-
 function getNextDueService(vehicle, history) {
   let soonest = null, soonestMiles = Infinity;
   for (const [service, interval] of Object.entries(MAINTENANCE_INTERVALS)) {
@@ -804,7 +775,6 @@ function getNextDueService(vehicle, history) {
   }
   return soonest;
 }
-
 async function openVehicleDetail(vehicle) {
   currentVehicle = vehicle;
   showVehicleDetail();
@@ -843,7 +813,6 @@ async function openVehicleDetail(vehicle) {
     });
   } else { issuesSection.style.display = 'none'; }
 }
-
 function showVehiclesHome() {
   document.getElementById('vehicles-home').style.display = 'flex';
   document.getElementById('vehicle-detail').style.display = 'none';
@@ -852,7 +821,6 @@ function showVehiclesHome() {
   document.getElementById('vehicle-issue-form').style.display = 'none';
   document.getElementById('vehicle-history').style.display = 'none';
 }
-
 function showVehicleDetail() {
   document.getElementById('vehicles-home').style.display = 'none';
   document.getElementById('vehicle-detail').style.display = 'flex';
@@ -861,7 +829,6 @@ function showVehicleDetail() {
   document.getElementById('vehicle-issue-form').style.display = 'none';
   document.getElementById('vehicle-history').style.display = 'none';
 }
-
 function showUpdateMileage() {
   document.getElementById('mileage-form-current').textContent = currentVehicle.current_mileage.toLocaleString();
   document.getElementById('new-mileage-input').value = '';
@@ -872,7 +839,6 @@ function showUpdateMileage() {
   document.getElementById('vehicle-issue-form').style.display = 'none';
   document.getElementById('vehicle-history').style.display = 'none';
 }
-
 function showLogService() {
   document.getElementById('service-mileage-input').value = currentVehicle.current_mileage;
   document.getElementById('service-notes-input').value = '';
@@ -884,7 +850,6 @@ function showLogService() {
   document.getElementById('vehicle-issue-form').style.display = 'none';
   document.getElementById('vehicle-history').style.display = 'none';
 }
-
 function showReportIssue() {
   document.getElementById('issue-description-input').value = '';
   document.getElementById('vehicles-home').style.display = 'none';
@@ -894,7 +859,6 @@ function showReportIssue() {
   document.getElementById('vehicle-issue-form').style.display = 'flex';
   document.getElementById('vehicle-history').style.display = 'none';
 }
-
 async function showServiceHistory() {
   document.getElementById('history-title').textContent = `${currentVehicle.name} — Service history`;
   document.getElementById('vehicles-home').style.display = 'none';
@@ -915,7 +879,6 @@ async function showServiceHistory() {
     list.appendChild(card);
   });
 }
-
 async function submitMileageUpdate() {
   const mileage = parseInt(document.getElementById('new-mileage-input').value);
   if (!mileage || mileage < currentVehicle.current_mileage) { alert('Please enter a valid mileage higher than the current reading.'); return; }
@@ -924,7 +887,6 @@ async function submitMileageUpdate() {
   alert('Mileage updated!');
   openVehicleDetail(currentVehicle);
 }
-
 async function submitServiceLog() {
   const service_type = document.getElementById('service-type-select').value;
   const mileage_at_service = parseInt(document.getElementById('service-mileage-input').value);
@@ -935,7 +897,6 @@ async function submitServiceLog() {
   alert('Service logged!');
   openVehicleDetail(currentVehicle);
 }
-
 async function submitIssueReport() {
   const description = document.getElementById('issue-description-input').value.trim();
   if (!description) { alert('Please describe the issue.'); return; }
@@ -943,13 +904,11 @@ async function submitIssueReport() {
   alert('Issue reported!');
   openVehicleDetail(currentVehicle);
 }
-
 async function resolveIssue(issue_id) {
   if (!confirm('Mark this issue as resolved?')) return;
   await fetch('/api/vehicles?action=resolve_issue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ issue_id }) });
   openVehicleDetail(currentVehicle);
 }
-
 function switchChannel(key, el) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   el.classList.add('active');
@@ -961,17 +920,14 @@ function switchChannel(key, el) {
   document.getElementById('topbar-tag').textContent = c.tag;
   closeSidebar();
 }
-
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
   document.getElementById('overlay').classList.add('visible');
 }
-
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('visible');
 }
-
 document.getElementById('user-input').addEventListener('keypress', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
@@ -980,7 +936,6 @@ document.getElementById('user-input').addEventListener('input', function() {
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
 document.getElementById('pin-input').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
-
 loadPlumbers();
 </script>
 </body>
