@@ -463,14 +463,29 @@ async function saveMessage(role, content) {
 async function sendMessage() {
   const input = document.getElementById('user-input');
   const text = input.value.trim();
-  if (!text) return;
+  if (!text && !pendingImageBase64) return;
   input.value = '';
-input.style.height = 'auto';
-document.getElementById('send-btn').disabled = false;
-  addMessage(text, 'user');
-  conversationHistory.push({ role: 'user', content: text });
-  saveMessage('user', text);
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+
+  // Build the user message content
+  let userContent;
+  if (pendingImageBase64) {
+    userContent = [
+      { type: 'image', source: { type: 'base64', media_type: pendingImageType, data: pendingImageBase64 }},
+      { type: 'text', text: text || 'What am I looking at here? What should I know or do next?' }
+    ];
+    addMessage(text || '📷 Photo sent', 'user');
+  } else {
+    userContent = text;
+    addMessage(text, 'user');
+  }
+
+  clearImage();
+  conversationHistory.push({ role: 'user', content: userContent });
+  saveMessage('user', text || '[image]');
   const loadingEl = addMessage('Thinking...', 'ai');
+
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
@@ -488,6 +503,28 @@ document.getElementById('send-btn').disabled = false;
   }
   document.getElementById('send-btn').disabled = false;
   input.focus();
+}
+
+function handleImageSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = e.target.result;
+    pendingImageBase64 = result.split(',')[1];
+    pendingImageType = file.type;
+    document.getElementById('image-preview').src = result;
+    document.getElementById('image-preview-area').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function clearImage() {
+  pendingImageBase64 = null;
+  pendingImageType = null;
+  document.getElementById('image-preview-area').style.display = 'none';
+  document.getElementById('image-preview').src = '';
 }
 
 function addMessage(text, type, scroll=true) {
