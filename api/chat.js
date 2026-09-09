@@ -26,7 +26,13 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: JSON.stringify(data) });
         }
 
-        res.status(200).json({ reply: data.content[0].text });
+        const textBlock = data.content?.find(block => block.type === 'text');
+        if (!textBlock) {
+            console.error('Unexpected Anthropic response shape:', JSON.stringify(data));
+            return res.status(500).json({ error: 'No text content in response' });
+        }
+
+        res.status(200).json({ reply: textBlock.text });
 
     } catch (err) {
         console.error('Caught error:', err.message);

@@ -485,8 +485,11 @@ async function sendMessage() {
   let imageUrl = null;
   if (pendingImageBase64) {
     imageUrl = await uploadImageToStorage(pendingImageBase64, pendingImageType);
+    const imageSource = imageUrl
+      ? { type: 'url', url: imageUrl }
+      : { type: 'base64', media_type: pendingImageType, data: pendingImageBase64 };
     userContent = [
-      { type: 'image', source: { type: 'base64', media_type: pendingImageType, data: pendingImageBase64 }},
+      { type: 'image', source: imageSource },
       { type: 'text', text: text || 'What am I looking at here? What should I know or do next?' }
     ];
     addMessage(text || (imageUrl ? '' : '📷 Photo sent'), 'user', true, imageUrl);
