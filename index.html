@@ -723,6 +723,7 @@ async function loadMyDay() {
   try {
     const res = await fetch(`/api/housecall?action=my_day&plumber_name=${encodeURIComponent(currentUser.name)}`);
     const data = await res.json();
+    if (data.error) { list.innerHTML = `<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
     if (data.warning) { list.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">${data.warning}</div>`; return; }
     if (!data.jobs || !data.jobs.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No jobs on your board for today.</div>'; return; }
     list.innerHTML = data.jobs.map(jobCardHTML).join('');
@@ -736,6 +737,7 @@ async function loadDashboard() {
   try {
     const res = await fetch('/api/housecall?action=dashboard');
     const data = await res.json();
+    if (data.error) { list.innerHTML = `<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
     if (!data.board || !data.board.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No one has jobs scheduled today.</div>'; return; }
     list.innerHTML = data.board.map(row => {
       let statusLine;
