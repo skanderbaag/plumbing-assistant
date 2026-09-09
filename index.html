@@ -152,6 +152,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Assistant
       </div>
+      <div class="nav-item" onclick="switchChannel('myday', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        My day
+      </div>
+      <div class="nav-item" id="nav-dashboard" onclick="switchChannel('dashboard', this)" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Dashboard
+      </div>
       <div class="nav-item" onclick="switchChannel('training', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
         Training
@@ -205,6 +213,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
         <button class="send-btn" id="send-btn" onclick="sendMessage()">
           <svg viewBox="0 0 24 24"><path d="M2 12L22 2 12 22 10 13 2 12z"/></svg>
         </button>
+      </div>
+    </div>
+    <!-- MY DAY -->
+    <div class="channel-view" id="ch-myday">
+      <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <div style="font-size:13px;color:#6b7280;">Your jobs for today, pulled live from Housecall Pro</div>
+        <button onclick="loadMyDay()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+      </div>
+      <div id="myday-list" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
+        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading today's jobs...</div>
+      </div>
+    </div>
+    <!-- DASHBOARD -->
+    <div class="channel-view" id="ch-dashboard">
+      <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <div style="font-size:13px;color:#6b7280;">Live status for everyone with jobs today</div>
+        <button onclick="loadDashboard()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+      </div>
+      <div id="dashboard-list" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
+        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading dashboard...</div>
       </div>
     </div>
     <!-- TRAINING -->
@@ -391,6 +419,8 @@ const MAINTENANCE_INTERVALS = {
 };
 const channels = {
   assistant: { title: 'Assistant', sub: 'Ask anything — code, materials, best practices', tag: 'Ohio · IPC' },
+  myday: { title: 'My day', sub: "Today's jobs, pulled live from Housecall Pro", tag: 'Schedule' },
+  dashboard: { title: 'Team dashboard', sub: "Where everyone's at, right now", tag: 'Live' },
   training: { title: 'Training', sub: 'Study guides and knowledge quizzes', tag: 'Knowledge' },
   updates: { title: 'Shop updates', sub: 'Latest from the team', tag: 'Bulletin' },
   vehicles: { title: 'Vehicle maintenance', sub: 'Service logs for each truck', tag: 'Fleet' },
@@ -429,6 +459,7 @@ async function doLogin() {
   loadTip();
   if (['manager','GM','Owner'].includes(data.role)) {
     document.getElementById('post-form-area').style.display = 'block';
+    document.getElementById('nav-dashboard').style.display = 'flex';
   }
   addMessage('Hey ' + data.name + '! What can I help you with today? Ask me anything about code, materials, fittings, or best practices. You can also tap the camera icon to send a photo of what you\'re working on.', 'ai');
 }
@@ -505,7 +536,7 @@ async function sendMessage() {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: conversationHistory })
+      body: JSON.stringify({ messages: conversationHistory, plumber_name: currentUser.name })
     });
     const data = await response.json();
     if (data.error) { loadingEl.querySelector('.bubble').textContent = 'Error: ' + data.error; return; }
@@ -647,6 +678,95 @@ async function loadTip() {
     document.getElementById('tip-text').textContent = data.tip;
   } catch(e) {
     document.getElementById('tip-text').textContent = 'When soldering copper, always let the fitting do the work — heat the fitting, not the solder. The solder should flow toward the heat.';
+  }
+}
+function statusMeta(status) {
+  if (status === 'in progress') return { label: 'In progress', color: '#0a1f44', bg: '#e8f0fe', text: '#1a3a6b' };
+  if (status === 'scheduled') return { label: 'Scheduled', color: '#f59e0b', bg: '#fef3c7', text: '#92400e' };
+  if (status && status.startsWith('complete')) return { label: 'Complete', color: '#10b981', bg: '#d1fae5', text: '#065f46' };
+  if (status && status.includes('cancel')) return { label: 'Canceled', color: '#9ca3af', bg: '#f3f4f6', text: '#6b7280' };
+  return { label: status || 'Unknown', color: '#9ca3af', bg: '#f3f4f6', text: '#6b7280' };
+}
+function formatJobTime(job) {
+  if (!job.scheduled_start) return '';
+  const start = new Date(job.scheduled_start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const end = job.scheduled_end ? new Date(job.scheduled_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+  return end ? `${start} – ${end}` : start;
+}
+function jobCardHTML(job) {
+  const sm = statusMeta(job.work_status);
+  const materials = (job.line_items || []).filter(li => li.name);
+  return `
+    <div style="background:white;border:1px solid #e5e7eb;border-left:4px solid ${sm.color};border-radius:12px;padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#0a1f44;">${job.job_type}</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${job.customer_name}${job.address ? ' · ' + job.address : ''}</div>
+        </div>
+        <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:${sm.bg};color:${sm.text};white-space:nowrap;">${sm.label}</span>
+      </div>
+      <div style="font-size:13px;color:#374151;margin-bottom:8px;">${formatJobTime(job)}</div>
+      ${job.notes && job.notes.length ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;margin-bottom:4px;">Notes</div>
+        ${job.notes.map(n => `<div style="font-size:13px;color:#374151;line-height:1.5;white-space:pre-line;">${n}</div>`).join('<hr style="border:none;border-top:1px solid #e5e7eb;margin:6px 0;">')}
+      </div>` : ''}
+      ${materials.length ? `<div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;margin-bottom:4px;">Materials / line items</div>
+        ${materials.map(li => `<div style="font-size:13px;color:#374151;padding:3px 0;">${li.quantity ? li.quantity + '× ' : ''}${li.name}</div>`).join('')}
+      </div>` : ''}
+    </div>
+  `;
+}
+async function loadMyDay() {
+  const list = document.getElementById('myday-list');
+  list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading today\'s jobs...</div>';
+  try {
+    const res = await fetch(`/api/housecall?action=my_day&plumber_name=${encodeURIComponent(currentUser.name)}`);
+    const data = await res.json();
+    if (data.warning) { list.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">${data.warning}</div>`; return; }
+    if (!data.jobs || !data.jobs.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No jobs on your board for today.</div>'; return; }
+    list.innerHTML = data.jobs.map(jobCardHTML).join('');
+  } catch (err) {
+    list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading your schedule. Try refreshing.</div>';
+  }
+}
+async function loadDashboard() {
+  const list = document.getElementById('dashboard-list');
+  list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading dashboard...</div>';
+  try {
+    const res = await fetch('/api/housecall?action=dashboard');
+    const data = await res.json();
+    if (!data.board || !data.board.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No one has jobs scheduled today.</div>'; return; }
+    list.innerHTML = data.board.map(row => {
+      let statusLine;
+      if (row.current_job) {
+        statusLine = `On <strong>${row.current_job.job_type}</strong> for ${row.current_job.customer_name}`;
+      } else if (row.next_job) {
+        statusLine = `Next up: <strong>${row.next_job.job_type}</strong> for ${row.next_job.customer_name} at ${formatJobTime(row.next_job)}`;
+      } else if (row.jobs_completed === row.jobs_today) {
+        statusLine = `Done for the day — ${row.jobs_completed} job${row.jobs_completed !== 1 ? 's' : ''} completed`;
+      } else {
+        statusLine = 'Between jobs';
+      }
+      return `
+        <div style="background:white;border:1px solid #e5e7eb;border-left:4px solid ${row.running_late ? '#ef4444' : '#10b981'};border-radius:12px;padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
+            <div style="font-size:15px;font-weight:700;color:#0a1f44;">${row.plumber_name}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+              ${row.running_late ? `<span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:#fee2e2;color:#991b1b;">Running late</span>` : ''}
+              ${row.unpaid_jobs.length ? `<span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:#fef3c7;color:#92400e;">${row.unpaid_jobs.length} unpaid</span>` : ''}
+            </div>
+          </div>
+          <div style="font-size:13px;color:#374151;margin-bottom:4px;">${statusLine}</div>
+          <div style="font-size:12px;color:#9ca3af;">${row.jobs_completed} of ${row.jobs_today} jobs completed today</div>
+          ${row.unpaid_jobs.length ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
+            ${row.unpaid_jobs.map(u => `<div style="font-size:12px;color:#92400e;">Unpaid: ${u.customer_name} — $${u.amount.toFixed(2)}${u.invoice_number ? ' (Inv #' + u.invoice_number + ')' : ''}</div>`).join('')}
+          </div>` : ''}
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading dashboard. Try refreshing.</div>';
   }
 }
 function selectLevel(level) { currentLevel = level; showTopics(); }
@@ -952,6 +1072,8 @@ function switchChannel(key, el) {
   document.getElementById('topbar-title').textContent = c.title;
   document.getElementById('topbar-sub').textContent = c.sub;
   document.getElementById('topbar-tag').textContent = c.tag;
+  if (key === 'myday') loadMyDay();
+  if (key === 'dashboard') loadDashboard();
   closeSidebar();
 }
 function openSidebar() {
