@@ -63,6 +63,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .msg.ai .bubble strong { font-weight: 600; }
 .msg.ai .bubble hr { border: none; border-top: 1px solid #e5e7eb; margin: 8px 0; }
 .msg.ai .bubble img { max-width: 100%; border-radius: 8px; margin: 4px 0; }
+.bubble img.chat-photo { max-width: 220px; max-height: 220px; border-radius: 12px; display: block; object-fit: cover; margin-bottom: 6px; }
 .chat-input-area { background: white; border-top: 1px solid #e5e7eb; padding: 12px 16px; display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
 .chat-input { flex: 1; background: #f4f6f9; border: 1px solid #e5e7eb; border-radius: 22px; padding: 10px 16px; font-size: 14px; color: #1f2937; outline: none; resize: none; overflow-y: hidden; min-height: 40px; max-height: 120px; line-height: 1.5; font-family: inherit; }
 .chat-input:focus { border-color: #0a1f44; }
@@ -449,12 +450,29 @@ async function loadConversation() {
     document.getElementById('messages').innerHTML = '';
     data.forEach(m => {
       conversationHistory.push({ role: m.role, content: m.content });
-      addMessage(m.content, m.role === 'user' ? 'user' : 'ai', false);
+      addMessage(m.content, m.role === 'user' ? 'user' : 'ai', false, m.image_url);
     });
   }
 }
-async function saveMessage(role, content) {
-  await sb.from('conversations').insert({ plumber_id: currentUser.id, role, content, channel: 'assistant' });
+async function saveMessage(role, content, imageUrl = null) {
+  await sb.from('conversations').insert({ plumber_id: currentUser.id, role, content, channel: 'assistant', image_url: imageUrl });
+}
+async function uploadImageToStorage(base64, mediaType) {
+  try {
+    const ext = (mediaType.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+    const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+    const byteArray = new Uint8Array(byteNumbers);
+    const { error } = await sb.storage.from('chat-images').upload(path, byteArray, { contentType: mediaType });
+    if (error) { console.error('Image upload failed:', error.message); return null; }
+    const { data } = sb.storage.from('chat-images').getPublicUrl(path);
+    return data.publicUrl;
+  } catch (err) {
+    console.error('Image upload error:', err.message);
+    return null;
+  }
 }
 async function sendMessage() {
   const input = document.getElementById('user-input');
@@ -464,19 +482,21 @@ async function sendMessage() {
   input.style.height = 'auto';
   document.getElementById('send-btn').disabled = true;
   let userContent;
+  let imageUrl = null;
   if (pendingImageBase64) {
+    imageUrl = await uploadImageToStorage(pendingImageBase64, pendingImageType);
     userContent = [
       { type: 'image', source: { type: 'base64', media_type: pendingImageType, data: pendingImageBase64 }},
       { type: 'text', text: text || 'What am I looking at here? What should I know or do next?' }
     ];
-    addMessage(text || '📷 Photo sent', 'user');
+    addMessage(text || (imageUrl ? '' : '📷 Photo sent'), 'user', true, imageUrl);
   } else {
     userContent = text;
     addMessage(text, 'user');
   }
   clearImage();
   conversationHistory.push({ role: 'user', content: userContent });
-  saveMessage('user', text || '[image]');
+  saveMessage('user', text, imageUrl);
   const loadingEl = addMessage('Thinking...', 'ai');
   try {
     const response = await fetch('/api/chat', {
@@ -516,7 +536,7 @@ function clearImage() {
   document.getElementById('image-preview-area').style.display = 'none';
   document.getElementById('image-preview').src = '';
 }
-function addMessage(text, type, scroll=true) {
+function addMessage(text, type, scroll=true, imageUrl=null) {
   const el = document.createElement('div');
   el.className = 'msg ' + type;
   const label = document.createElement('div');
@@ -524,8 +544,19 @@ function addMessage(text, type, scroll=true) {
   label.textContent = type === 'user' ? currentUser?.name : 'Journeyman';
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  if (type === 'ai') bubble.innerHTML = marked.parse(text);
-  else bubble.textContent = text;
+  if (imageUrl) {
+    const img = document.createElement('img');
+    img.className = 'chat-photo';
+    img.src = imageUrl;
+    img.alt = 'Photo sent in chat';
+    bubble.appendChild(img);
+  }
+  if (text) {
+    const textEl = document.createElement('div');
+    if (type === 'ai') textEl.innerHTML = marked.parse(text);
+    else textEl.textContent = text;
+    bubble.appendChild(textEl);
+  }
   el.appendChild(label);
   el.appendChild(bubble);
   document.getElementById('messages').appendChild(el);
