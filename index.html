@@ -731,6 +731,36 @@ async function loadMyDay() {
     list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading your schedule. Try refreshing.</div>';
   }
 }
+function fmtTime(iso) {
+  return iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—';
+}
+function paymentLabel(job) {
+  // outstanding_balance is the source of truth (matches the "X unpaid" badge above) -
+  // check it first so we never show "Paid" on a job that still owes money. Housecall's
+  // invoice.status and paid_at can disagree with the job's own balance (e.g. partial payments).
+  if (job.outstanding_balance > 0) return `Unpaid — $${job.outstanding_balance.toFixed(2)}`;
+  if (job.paid_at) return `Paid ${fmtTime(job.paid_at)}`;
+  if (job.payment_status) return job.payment_status.charAt(0).toUpperCase() + job.payment_status.slice(1);
+  return 'No invoice';
+}
+function dashboardJobRow(job) {
+  const sm = statusMeta(job.work_status);
+  return `
+    <div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="font-size:13px;font-weight:600;color:#0a1f44;">${job.customer_name || 'Unknown customer'}</div>
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:${sm.bg};color:${sm.text};white-space:nowrap;">${sm.label}</span>
+      </div>
+      <div style="font-size:12px;color:#9ca3af;margin-top:1px;">${job.job_type}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;font-size:12px;color:#6b7280;">
+        <span>On the way: <strong style="color:#374151;">${fmtTime(job.on_my_way_at)}</strong></span>
+        <span>Started: <strong style="color:#374151;">${fmtTime(job.started_at)}</strong></span>
+        <span>Completed: <strong style="color:#374151;">${fmtTime(job.completed_at)}</strong></span>
+        <span>Payment: <strong style="color:${job.outstanding_balance > 0 ? '#dc2626' : '#059669'};">${paymentLabel(job)}</strong></span>
+      </div>
+    </div>
+  `;
+}
 async function loadDashboard() {
   const list = document.getElementById('dashboard-list');
   list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading dashboard...</div>';
@@ -761,9 +791,9 @@ async function loadDashboard() {
           </div>
           <div style="font-size:13px;color:#374151;margin-bottom:4px;">${statusLine}</div>
           <div style="font-size:12px;color:#9ca3af;">${row.jobs_completed} of ${row.jobs_today} jobs completed today</div>
-          ${row.unpaid_jobs.length ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
-            ${row.unpaid_jobs.map(u => `<div style="font-size:12px;color:#92400e;">Unpaid: ${u.customer_name} — $${u.amount.toFixed(2)}${u.invoice_number ? ' (Inv #' + u.invoice_number + ')' : ''}</div>`).join('')}
-          </div>` : ''}
+          <div style="margin-top:10px;padding-top:4px;border-top:1px solid #e5e7eb;">
+            ${row.jobs.map(dashboardJobRow).join('')}
+          </div>
         </div>
       `;
     }).join('');

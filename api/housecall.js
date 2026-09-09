@@ -1,4 +1,4 @@
-import { getEmployees, getTodaysJobs, getLineItems, matchEmployee, jobsForEmployee, simplifyJob } from '../lib/housecall.js';
+import { getEmployees, getTodaysJobs, getLineItems, getInvoiceInfo, matchEmployee, jobsForEmployee, simplifyJob } from '../lib/housecall.js';
 
 // A scheduled job counts as "running late" if its arrival window has fully elapsed
 // and the tech hasn't marked "on my way" or started it yet. Adjust the grace logic
@@ -47,20 +47,28 @@ export default async function handler(req, res) {
             const [employees, jobs] = await Promise.all([getEmployees(), getTodaysJobs()]);
             const now = new Date();
 
-            const board = employees.map(emp => {
+            const board = await Promise.all(employees.map(async (emp) => {
                 const empJobs = jobsForEmployee(jobs, emp.id)
                     .sort((a, b) => new Date(a.schedule?.scheduled_start || 0) - new Date(b.schedule?.scheduled_start || 0))
                     .map(simplifyJob);
 
-                const current = empJobs.find(j => j.work_status === 'in progress') || null;
-                const next = empJobs.find(j => j.work_status === 'scheduled') || null;
-                const completed = empJobs.filter(j => j.work_status.startsWith('complete'));
+                // Attach payment info (status + actual paid_at timestamp) to every job today
+                const withPayment = await Promise.all(empJobs.map(async (job) => {
+                    const invoice = await getInvoiceInfo(job.id);
+                    job.payment_status = invoice.status; // e.g. 'paid', 'sent', 'unsent'...
+                    job.paid_at = invoice.paid_at;
+                    return job;
+                }));
+
+                const current = withPayment.find(j => j.work_status === 'in progress') || null;
+                const next = withPayment.find(j => j.work_status === 'scheduled') || null;
+                const completed = withPayment.filter(j => j.work_status.startsWith('complete'));
                 const unpaid = completed.filter(j => j.outstanding_balance > 0);
-                const runningLate = empJobs.some(j => isRunningLate(j, now));
+                const runningLate = withPayment.some(j => isRunningLate(j, now));
 
                 return {
                     plumber_name: emp.first_name,
-                    jobs_today: empJobs.length,
+                    jobs_today: withPayment.length,
                     jobs_completed: completed.length,
                     current_job: current,
                     next_job: next,
@@ -69,11 +77,12 @@ export default async function handler(req, res) {
                         customer_name: j.customer_name,
                         amount: j.outstanding_balance,
                         invoice_number: j.invoice_number
-                    }))
+                    })),
+                    jobs: withPayment
                 };
-            }).filter(row => row.jobs_today > 0);
+            }));
 
-            return res.status(200).json({ board, generated_at: now.toISOString() });
+            return res.status(200).json({ board: board.filter(row => row.jobs_today > 0), generated_at: now.toISOString() });
         }
 
         return res.status(400).json({ error: 'Unknown action' });
