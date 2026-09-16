@@ -47,7 +47,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
 .topbar-tag { background: #e8f0fe; color: #1a3a6b; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
 .channel-view { display: none; flex: 1; flex-direction: column; min-height: 0; }
 .channel-view.active { display: flex; }
-.messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.messages { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
 .msg { display: flex; flex-direction: column; gap: 3px; }
 .msg.user { align-items: flex-end; }
 .msg-label { font-size: 11px; color: #9ca3af; padding: 0 4px; }
@@ -501,11 +501,13 @@ function doLogout() {
 async function loadConversation() {
   const { data } = await sb.from('conversations').select('*').eq('plumber_id', currentUser.id).eq('channel', 'assistant').order('created_at', { ascending: true }).limit(50);
   if (data && data.length > 0) {
-    document.getElementById('messages').innerHTML = '';
+    const messagesEl = document.getElementById('messages');
+    messagesEl.innerHTML = '';
     data.forEach(m => {
       conversationHistory.push({ role: m.role, content: m.content });
       addMessage(m.content, m.role === 'user' ? 'user' : 'ai', false, m.image_url);
     });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 }
 async function saveMessage(role, content, imageUrl = null) {
