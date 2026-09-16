@@ -446,10 +446,11 @@ const channels = {
 const apprenticeTopics = ['Basic terminology', 'Tool identification', 'Pipe materials and sizing'];
 const journeymanTopics = ['Code knowledge', 'Fixture brands', 'Advanced techniques'];
 async function loadPlumbers() {
-  const { data } = await sb.from('plumbers').select('name').order('name');
+  const res = await fetch('/api/login?action=names');
+  const data = await res.json();
   const sel = document.getElementById('name-select');
   sel.innerHTML = '<option value="">Select your name...</option>';
-  if (data) data.forEach(p => {
+  if (Array.isArray(data)) data.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.name;
     opt.textContent = p.name;
@@ -462,7 +463,12 @@ async function doLogin() {
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
   if (!name || !pin) { errEl.textContent = 'Please select your name and enter your PIN.'; errEl.style.display = 'block'; return; }
-  const { data } = await sb.from('plumbers').select('*').eq('name', name).eq('pin', pin).single();
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, pin })
+  });
+  const data = res.ok ? await res.json() : null;
   if (!data) { errEl.textContent = 'Incorrect PIN. Try again.'; errEl.style.display = 'block'; return; }
   currentUser = data;
   document.getElementById('login-screen').style.display = 'none';
