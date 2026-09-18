@@ -2,182 +2,442 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F2148">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Crew%20Portal%22%2C%22short_name%22%3A%22Crew%22%2C%22theme_color%22%3A%22%230F2148%22%2C%22background_color%22%3A%22%23F6F4EF%22%2C%22display%22%3A%22standalone%22%7D">
 <title>The Local Plumber</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+:root {
+  /* Fonts */
+  --font-display: 'Barlow Semi Condensed', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+  --font-body: 'Source Sans 3', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* Brand */
+  --navy:        #0F2148;
+  --navy-ink:    #14213D;
+  --brass:       #A6642F;
+  --brass-hover: #7F4A20;
+  --brass-tint:  #FBF3EA;
+  --brass-line:  #F0DCC4;
+  --brass-light: #E3C7A8;
+
+  /* Ground + surfaces */
+  --bg:          #F6F4EF;
+  --surface:     #FFFFFF;
+  --line:        #E4DFD5;
+  --line-strong: #D9D2C5;
+
+  /* Text on light */
+  --text:        #14213D;
+  --text-muted:  #5B6478;
+  --text-faint:  #8F9AB5;
+
+  /* Text on navy */
+  --on-navy:        #FFFFFF;
+  --on-navy-muted:  #C9CFDD;
+  --on-navy-dim:    #DDE2EC;
+  --navy-hover:     rgba(255,255,255,0.08);
+  --navy-active:    rgba(255,255,255,0.12);
+  --navy-divider:   rgba(255,255,255,0.12);
+
+  /* Status */
+  --ok-bg:   #E9F7EE;  --ok-fg:   #1B6B3A;  --ok-dot:  #23934F;
+  --warn-bg: #FFF4E0;  --warn-fg: #8A5A00;
+  --bad-bg:  #FDECEA;  --bad-fg:  #A3261B;
+  --info-bg: #E8EEF9;  --info-fg: #1F3A7A;
+
+  /* Radii */
+  --r-sm: 8px;  --r-md: 10px;  --r-lg: 12px;  --r-xl: 16px;  --r-pill: 999px;
+
+  /* Shadow */
+  --shadow-card: 0 2px 6px rgba(20,33,61,0.05);
+
+  /* Spacing scale */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+
+  /* Type scale - mobile first */
+  --fs-eyebrow: 12px;
+  --fs-caption: 14px;
+  --fs-body:    16px;
+  --fs-body-lg: 17px;
+  --fs-lead:    18px;
+  --fs-h3:      22px;
+  --fs-h2:      26px;
+  --fs-h1:      38px;
+  --fs-time:    28px;
+}
+@media (min-width: 900px) {
+  :root {
+    --fs-body: 17px; --fs-body-lg: 18px; --fs-lead: 19px;
+    --fs-h3: 24px; --fs-h2: 30px; --fs-h1: 44px; --fs-time: 34px;
+    --fs-eyebrow: 13px; --fs-caption: 15px;
+  }
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f4f6f9; color: #1f2937; height: 100vh; overflow: hidden; }
-#login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0a1f44; padding: 24px; }
-.login-logo { color: white; font-size: 28px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.5px; }
-.login-sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 40px; }
-.login-card { background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 340px; }
-.login-card h2 { font-size: 17px; font-weight: 600; color: #0a1f44; margin-bottom: 20px; }
-.login-select { width: 100%; padding: 12px; border: 1.5px solid #e5e7eb; border-radius: 10px; font-size: 15px; color: #1f2937; margin-bottom: 14px; background: white; appearance: none; outline: none; }
-.login-select:focus { border-color: #0a1f44; }
-.pin-label { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
-.pin-input { width: 100%; padding: 12px; border: 1.5px solid #e5e7eb; border-radius: 10px; font-size: 20px; letter-spacing: 8px; text-align: center; outline: none; margin-bottom: 20px; }
-.pin-input:focus { border-color: #0a1f44; }
-.login-btn { width: 100%; background: #0a1f44; color: white; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 600; cursor: pointer; }
-.login-btn:hover { background: #0d2a5e; }
-.login-error { color: #dc2626; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
-#app-shell { display: none; height: 100vh; flex-direction: row; }
-#sidebar { width: 240px; background: #0a1f44; display: flex; flex-direction: column; flex-shrink: 0; transition: transform 0.3s; }
-.sidebar-header { padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-.brand-name { color: white; font-size: 15px; font-weight: 700; }
-.brand-tag { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 2px; }
-.user-section { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-.user-greeting { font-size: 11px; color: rgba(255,255,255,0.4); }
-.user-name { font-size: 14px; font-weight: 600; color: white; margin-top: 2px; }
-.user-role { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
-.nav-section { padding: 16px 0; flex: 1; overflow-y: auto; }
-.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 0 16px; margin-bottom: 6px; }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; transition: all 0.15s; }
-.nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
-.nav-item.active { background: rgba(255,255,255,0.12); color: white; }
-.nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
-.nav-badge { margin-left: auto; background: #e8402a; color: white; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 6px; }
-.sidebar-footer { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); }
-.logout-btn { background: none; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 12px; padding: 7px 12px; border-radius: 8px; cursor: pointer; width: 100%; }
-.logout-btn:hover { background: rgba(255,255,255,0.06); color: white; }
-#main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.topbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 20px; height: 54px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.topbar-left h2 { font-size: 16px; font-weight: 600; color: #0a1f44; }
-.topbar-left p { font-size: 11px; color: #9ca3af; margin-top: 1px; }
-.topbar-tag { background: #e8f0fe; color: #1a3a6b; font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+html { -webkit-text-size-adjust: 100%; }
+body { font-family: var(--font-body); font-size: var(--fs-body); background: var(--bg); color: var(--text); line-height: 1.45; -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
+h1, h2, h3, .display { font-family: var(--font-display); font-weight: 700; line-height: 1.05; letter-spacing: -0.01em; margin: 0; }
+a { color: var(--brass); }
+a:hover { color: var(--brass-hover); }
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
+:focus-visible { outline: 3px solid rgba(166,100,47,0.45); outline-offset: 2px; }
+
+/* Shared components (§5) */
+.eyebrow { font-size: var(--fs-eyebrow); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-card); overflow: hidden; padding: 18px; flex-shrink: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r-pill); height: 30px; padding: 0 12px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.chip.info { background: var(--info-bg); color: var(--info-fg); }
+.chip.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.chip.bad { background: var(--bad-bg); color: var(--bad-fg); }
+.note-panel { background: var(--brass-tint); border: 1px solid var(--brass-line); border-radius: var(--r-lg); padding: 14px 16px; }
+.note-panel .eyebrow { color: var(--brass); margin-bottom: 6px; }
+.btn-primary { background: var(--navy-ink); color: white; font-weight: 700; border-radius: var(--r-lg); height: 50px; padding: 0 18px; border: none; cursor: pointer; }
+.btn-primary:hover { background: #1C2E5A; }
+.btn-primary:active { background: var(--navy); }
+.btn-secondary { background: white; border: 1.5px solid var(--line-strong); color: var(--text); font-weight: 700; border-radius: var(--r-lg); height: 50px; padding: 0 18px; cursor: pointer; }
+.btn-secondary:hover { border-color: var(--navy-ink); }
+.btn-icon { width: 44px; height: 44px; border-radius: var(--r-md); border: 1.5px solid var(--line-strong); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); }
+@media (min-width: 900px) { .btn-primary, .btn-secondary { height: 46px; } }
+.field-label { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block; }
+.field-input { width: 100%; height: 52px; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: var(--r-lg); padding: 0 16px; font-size: var(--fs-body-lg); outline: none; color: var(--text); }
+.field-input:focus { border-color: var(--navy-ink); }
+@media (min-width: 900px) { .field-input { height: 48px; } }
+table.ref-table { width: 100%; border-collapse: collapse; font-size: 16px; }
+table.ref-table th { font-size: 14px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); background: var(--bg); text-align: left; padding: 12px 14px; }
+table.ref-table td { padding: 12px 14px; border-top: 1px solid var(--line); }
+.table-scroll { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.icon { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2; fill: none; }
+.state-msg { text-align: center; color: var(--text-muted); font-size: var(--fs-body); padding: 40px 0; }
+.state-msg.error { color: var(--bad-fg); }
+@media (min-width: 900px) { .tools-grid { grid-template-columns: repeat(4, 1fr) !important; } }
+.dashboard-list { display: flex; flex-direction: column; gap: 12px; }
+.dashboard-list > .card { flex-shrink: 0; }
+@media (min-width: 600px) { .dashboard-list { display: grid; grid-template-columns: 1fr 1fr; align-content: start; } }
+.job-card { padding: 0; display: flex; flex-direction: column; }
+.job-card-time { background: var(--navy); color: white; padding: 14px 18px; display: flex; align-items: baseline; gap: 8px; }
+.job-card-time-num { font-family: var(--font-display); font-size: var(--fs-time); font-weight: 700; }
+.job-card-time-ampm { font-size: 15px; margin-left: 3px; }
+.job-card-time-to { color: var(--on-navy-muted); font-size: 14px; }
+.job-card-time-end { font-family: var(--font-display); font-size: 20px; color: var(--brass-light); }
+.job-card-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.job-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.job-card-customer { font-size: var(--fs-lead); font-weight: 600; color: var(--text); }
+.job-card-address { display: flex; align-items: center; gap: 6px; font-size: var(--fs-body); color: var(--text-muted); text-decoration: none; }
+.job-card-address .icon { flex-shrink: 0; }
+.job-card-address:hover { color: var(--brass); }
+.job-card-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.job-card-actions .btn-primary, .job-card-actions .btn-secondary { width: 100%; }
+@media (min-width: 900px) {
+  .job-card { flex-direction: row; }
+  .job-card-time { flex-direction: column; align-items: flex-start; justify-content: center; width: 168px; flex-shrink: 0; gap: 2px; }
+  .job-card-time-to { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--navy-divider); width: 100%; }
+  .job-card-actions { flex-direction: row; margin-top: auto; padding-top: 10px; }
+  .job-card-actions .btn-primary, .job-card-actions .btn-secondary { flex: 1; width: auto; }
+}
+.list-header { padding: 16px; border-bottom: 1px solid var(--line); background: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 12px; }
+.list-header-sub { font-size: var(--fs-body); color: var(--text-muted); }
+@media (min-width: 900px) { .list-header { padding: 16px 48px; } .list-header-sub { display: none; } }
+
+#login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: var(--navy); padding: 24px; }
+.login-logo { color: white; font-family: var(--font-display); font-size: 40px; font-weight: 700; margin-bottom: 10px; }
+.login-rule { width: 22px; height: 3px; background: var(--brass); border-radius: 2px; margin-bottom: 10px; }
+.login-sub { color: var(--on-navy-muted); font-size: var(--fs-eyebrow); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 32px; }
+.login-card { background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 400px; }
+.login-card h2 { font-size: var(--fs-h3); font-weight: 700; color: var(--text); margin-bottom: 20px; }
+.login-select { width: 100%; height: 52px; padding: 0 16px; border: 1.5px solid var(--line-strong); border-radius: var(--r-lg); font-size: var(--fs-body-lg); color: var(--text); margin-bottom: 14px; background: white; appearance: none; outline: none; }
+.login-select:focus { border-color: var(--navy-ink); }
+.pin-label { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+.pin-input { width: 100%; height: 52px; padding: 0 16px; border: 1.5px solid var(--line-strong); border-radius: var(--r-lg); font-size: 24px; letter-spacing: 8px; text-align: center; outline: none; margin-bottom: 20px; }
+.pin-input:focus { border-color: var(--navy-ink); }
+.login-btn { width: 100%; height: 50px; background: var(--navy-ink); color: white; border: none; border-radius: var(--r-lg); font-size: 16px; font-weight: 700; cursor: pointer; }
+.login-btn:hover { background: #1C2E5A; }
+.login-error { color: var(--bad-fg); font-size: 15px; text-align: center; margin-top: 12px; display: none; }
+#app-shell { display: none; height: 100vh; flex-direction: column; }
+
+/* ---- Desktop sidebar (§5.3) ---- */
+#sidebar { width: 240px; background: var(--navy); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-header { padding: 28px 16px 22px; border-bottom: 1px solid var(--navy-divider); }
+.brand-name { color: white; font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+.brand-rule { width: 22px; height: 3px; background: var(--brass); border-radius: 2px; margin: 10px 0 8px; }
+.brand-tag { color: var(--on-navy-muted); font-size: var(--fs-eyebrow); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; }
+.user-section { padding: 18px 16px; border-bottom: 1px solid var(--navy-divider); display: flex; align-items: center; gap: 12px; }
+.user-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--brass); color: white; font-family: var(--font-display); font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.user-name { font-size: 18px; font-weight: 700; color: white; }
+.user-role { font-size: 14px; color: var(--on-navy-muted); margin-top: 1px; }
+.nav-section { padding: 16px 8px; flex: 1; overflow-y: auto; }
+.nav-label { font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); padding: 0 10px; margin-bottom: 8px; }
+.nav-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; cursor: pointer; color: var(--on-navy-dim); font-size: 17px; font-weight: 600; border-radius: var(--r-md); }
+.nav-item:hover { background: var(--navy-hover); }
+.nav-item.active { background: var(--navy-active); color: white; }
+.nav-item.active svg { stroke: var(--brass); }
+.nav-item svg { width: 22px; height: 22px; flex-shrink: 0; stroke: currentColor; stroke-width: 2; fill: none; }
+.nav-badge { margin-left: auto; background: var(--bad-fg); color: white; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 6px; }
+.sidebar-footer { padding: 12px 16px 20px; }
+.logout-btn { background: none; border: 1px solid rgba(255,255,255,0.28); color: white; font-size: 14px; font-weight: 700; height: 46px; border-radius: var(--r-lg); cursor: pointer; width: 100%; }
+.logout-btn:hover { background: var(--navy-hover); }
+
+/* ---- Mobile app bar + tab bar (§5.1, 5.2) ---- */
+.app-bar { display: none; background: var(--navy); color: white; padding: 20px 20px; padding-top: calc(20px + env(safe-area-inset-top)); flex-direction: column; gap: 14px; position: sticky; top: 0; z-index: 50; flex-shrink: 0; }
+.app-bar-row1 { display: flex; align-items: center; justify-content: space-between; }
+.app-bar-brand { display: flex; align-items: center; gap: 8px; }
+.app-bar-brand-rule { width: 18px; height: 3px; background: var(--brass); border-radius: 2px; }
+.app-bar-brand-name { font-size: var(--fs-eyebrow); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--on-navy-muted); }
+.app-bar-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brass); color: white; font-family: var(--font-display); font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; flex-shrink: 0; }
+.app-bar-row2 { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.app-bar-eyebrow { font-size: var(--fs-eyebrow); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--brass-light); margin-bottom: 4px; }
+.app-bar-title { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 700; color: white; }
+.tab-bar { display: none; background: var(--navy); border-top: 1px solid var(--navy-divider); grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 10px 8px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; }
+.tab-item { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 4px; border-radius: var(--r-md); color: var(--on-navy-muted); text-decoration: none; background: none; border: none; cursor: pointer; font-family: inherit; }
+.tab-item svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2; fill: none; }
+.tab-item span { font-size: 12px; font-weight: 600; }
+.tab-item.active { background: var(--navy-active); color: white; }
+.tab-item.active span { font-weight: 700; }
+.tab-item.active svg { stroke: var(--brass); }
+.sheet-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,33,72,0.45); z-index: 98; }
+.sheet-backdrop.visible { display: block; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 16px 16px 0 0; z-index: 99; padding: 12px 8px calc(20px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform 0.25s ease; }
+.sheet.visible { transform: translateY(0); }
+.sheet-handle { width: 36px; height: 4px; background: var(--line-strong); border-radius: 2px; margin: 4px auto 12px; }
+.sheet-row { display: flex; align-items: center; gap: 14px; height: 52px; padding: 0 14px; color: var(--text); font-size: 17px; font-weight: 600; border-radius: var(--r-md); cursor: pointer; background: none; border: none; width: 100%; text-align: left; font-family: inherit; }
+.sheet-row:hover { background: var(--bg); }
+.sheet-row svg { width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2; fill: none; flex-shrink: 0; }
+.sheet-divider { height: 1px; background: var(--line); margin: 8px 14px; }
+.sheet-user { padding: 6px 14px 10px; }
+.sheet-user-name { font-size: 16px; font-weight: 700; color: var(--text); }
+.sheet-user-role { font-size: 14px; color: var(--text-muted); }
+.sheet-signout { margin: 6px 8px 0; }
+
+/* ---- Page header / content ---- */
+#main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.page-header { display: none; background: white; border-bottom: 1px solid var(--line); flex-shrink: 0; align-items: flex-end; justify-content: space-between; }
+.page-header-left .eyebrow { color: var(--brass); margin-bottom: 4px; }
+.page-header-left h2 { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 700; color: var(--text); }
+.page-header-left p { font-size: var(--fs-body-lg); color: var(--text-muted); margin-top: 2px; }
+.topbar-tag { background: var(--info-bg); color: var(--info-fg); font-size: 13px; padding: 6px 12px; border-radius: var(--r-pill); font-weight: 700; }
 .channel-view { display: none; flex: 1; flex-direction: column; min-height: 0; }
 .channel-view.active { display: flex; }
-.messages { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
-.msg { display: flex; flex-direction: column; gap: 3px; }
+.messages { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; }
+.msg { display: flex; flex-direction: column; gap: 4px; }
 .msg.user { align-items: flex-end; }
-.msg-label { font-size: 11px; color: #9ca3af; padding: 0 4px; }
-.bubble { padding: 11px 15px; font-size: 14px; line-height: 1.6; max-width: 82%; }
-.msg.user .bubble { background: #0a1f44; color: white; border-radius: 18px 18px 4px 18px; }
-.msg.ai .bubble { background: white; color: #1f2937; border-radius: 18px 18px 18px 4px; border: 1px solid #e5e7eb; }
-.msg.ai .bubble h1,.msg.ai .bubble h2,.msg.ai .bubble h3 { font-size: 14px; font-weight: 600; margin: 8px 0 4px; color: #0a1f44; }
-.msg.ai .bubble p { margin-bottom: 6px; }
-.msg.ai .bubble ul,.msg.ai .bubble ol { padding-left: 18px; margin-bottom: 6px; }
-.msg.ai .bubble table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 6px 0; }
-.msg.ai .bubble th,.msg.ai .bubble td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; }
-.msg.ai .bubble th { background: #f4f6f9; font-weight: 600; }
-.msg.ai .bubble strong { font-weight: 600; }
-.msg.ai .bubble hr { border: none; border-top: 1px solid #e5e7eb; margin: 8px 0; }
-.msg.ai .bubble img { max-width: 100%; border-radius: 8px; margin: 4px 0; }
-.bubble img.chat-photo { max-width: 220px; max-height: 220px; border-radius: 12px; display: block; object-fit: cover; margin-bottom: 6px; }
-.chat-input-area { background: white; border-top: 1px solid #e5e7eb; padding: 12px 16px; display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
-.chat-input { flex: 1; background: #f4f6f9; border: 1px solid #e5e7eb; border-radius: 22px; padding: 10px 16px; font-size: 14px; color: #1f2937; outline: none; resize: none; overflow-y: hidden; min-height: 40px; max-height: 120px; line-height: 1.5; font-family: inherit; }
-.chat-input:focus { border-color: #0a1f44; }
-.send-btn { width: 40px; height: 40px; background: #0a1f44; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.send-btn:disabled { background: #9ca3af; cursor: not-allowed; }
-.send-btn svg { width: 16px; height: 16px; fill: white; }
-.img-btn { width: 40px; height: 40px; background: #f4f6f9; border: 1px solid #e5e7eb; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #6b7280; }
-.img-btn:hover { background: #e5e7eb; }
+.msg-label { font-size: var(--fs-caption); color: var(--text-muted); padding: 0 4px; }
+.bubble { padding: 18px; font-size: var(--fs-body); line-height: 1.5; max-width: 85%; }
+.msg.user .bubble { background: var(--navy); color: white; border-radius: var(--r-xl) var(--r-xl) 6px var(--r-xl); }
+.msg.ai .bubble { background: var(--surface); color: var(--text); border-radius: var(--r-xl); border: 1px solid var(--line); box-shadow: var(--shadow-card); }
+.msg.ai .bubble h1,.msg.ai .bubble h2,.msg.ai .bubble h3 { font-family: var(--font-display); font-size: var(--fs-h3); font-weight: 700; margin: 20px 0 6px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--text); }
+.msg.ai .bubble h1:first-child,.msg.ai .bubble h2:first-child,.msg.ai .bubble h3:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.msg.ai .bubble p { margin-bottom: 8px; }
+.msg.ai .bubble ul,.msg.ai .bubble ol { padding-left: 22px; margin-bottom: 8px; }
+.msg.ai .bubble li { margin-bottom: 6px; }
+.msg.ai .bubble table { border-collapse: collapse; width: 100%; font-size: var(--fs-caption); margin: 6px 0; }
+.msg.ai .bubble th,.msg.ai .bubble td { border-top: 1px solid var(--line); padding: 10px 12px; text-align: left; }
+.msg.ai .bubble th { background: var(--bg); font-weight: 700; text-transform: uppercase; font-size: 12px; color: var(--text-muted); }
+.msg.ai .bubble strong { font-weight: 700; }
+.msg.ai .bubble hr { border: none; border-top: 1px solid var(--line); margin: 8px 0; }
+.msg.ai .bubble img { max-width: 100%; border-radius: var(--r-md); margin: 4px 0; }
+.bubble img.chat-photo { max-width: 220px; max-height: 220px; border-radius: var(--r-md); display: block; object-fit: cover; margin-bottom: 6px; }
+.chat-input-area { background: white; border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+.chat-input { flex: 1; background: var(--bg); border: 1.5px solid var(--line-strong); border-radius: var(--r-xl); padding: 13px 16px; font-size: var(--fs-body); color: var(--text); outline: none; resize: none; overflow-y: hidden; min-height: 48px; max-height: 120px; line-height: 1.5; font-family: inherit; }
+.chat-input:focus { border-color: var(--navy-ink); }
+.send-btn { width: 48px; height: 48px; background: var(--navy-ink); border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.send-btn:disabled { background: var(--text-faint); cursor: not-allowed; }
+.send-btn svg { width: 18px; height: 18px; fill: white; }
+.img-btn { width: 44px; height: 44px; background: white; border: 1.5px solid var(--line-strong); border-radius: var(--r-md); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text); }
+.img-btn:hover { background: var(--bg); }
 .image-preview-area { padding: 8px 16px 0; display: none; background: white; }
 .image-preview-inner { position: relative; display: inline-block; }
-.image-preview-inner img { height: 64px; border-radius: 8px; border: 1px solid #e5e7eb; display: block; }
-.image-preview-inner button { position: absolute; top: -6px; right: -6px; background: #ef4444; border: none; border-radius: 50%; width: 18px; height: 18px; color: white; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
-.bulletin-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.update-card { background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 16px; }
-.update-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-.update-title { font-size: 15px; font-weight: 600; color: #0a1f44; }
-.update-meta { font-size: 11px; color: #9ca3af; text-align: right; }
-.update-content { font-size: 14px; color: #374151; line-height: 1.6; }
-.post-btn { margin: 0 20px 20px; background: #0a1f44; color: white; border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.post-form { background: white; border-top: 1px solid #e5e7eb; padding: 16px 20px; display: none; flex-direction: column; gap: 10px; }
+.image-preview-inner img { height: 64px; border-radius: var(--r-md); border: 1px solid var(--line); display: block; }
+.image-preview-inner button { position: absolute; top: -6px; right: -6px; background: var(--bad-fg); border: none; border-radius: 50%; width: 18px; height: 18px; color: white; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.bulletin-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.update-card { background: white; border-radius: var(--r-xl); border: 1px solid var(--line); box-shadow: var(--shadow-card); padding: 18px; flex-shrink: 0; }
+.update-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 10px; }
+.update-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.update-meta { font-size: 14px; color: var(--text-muted); text-align: right; }
+.update-content { font-size: var(--fs-body); color: var(--text); line-height: 1.6; }
+.post-btn { margin: 0 16px 16px; background: var(--navy-ink); color: white; border: none; border-radius: var(--r-lg); height: 50px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.post-form { background: white; border-top: 1px solid var(--line); padding: 16px; display: none; flex-direction: column; gap: 10px; }
 .post-form.visible { display: flex; }
-.post-form input,.post-form textarea { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; font-size: 14px; outline: none; font-family: inherit; }
-.post-form input:focus,.post-form textarea:focus { border-color: #0a1f44; }
+.post-form input,.post-form textarea { border: 1.5px solid var(--line-strong); border-radius: var(--r-lg); padding: 12px 14px; font-size: var(--fs-body); outline: none; font-family: inherit; }
+.post-form input:focus,.post-form textarea:focus { border-color: var(--navy-ink); }
 .post-form textarea { min-height: 80px; resize: vertical; }
-.post-form-btns { display: flex; gap: 8px; }
-.post-submit { flex: 1; background: #0a1f44; color: white; border: none; border-radius: 8px; padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.post-cancel { background: #f4f6f9; color: #6b7280; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer; }
-.option-btn { background:white; border:1.5px solid #e5e7eb; border-radius:10px; padding:12px 14px; font-size:14px; color:#1f2937; cursor:pointer; text-align:left; transition:all 0.15s; width:100%; }
-.option-btn:hover { border-color:#0a1f44; background:#f8faff; }
-.option-btn.correct { background:#d1fae5; border-color:#10b981; color:#065f46; }
-.option-btn.incorrect { background:#fee2e2; border-color:#ef4444; color:#991b1b; }
-.option-btn.reveal { background:#f0f9ff; border-color:#0a1f44; }
-.placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #9ca3af; gap: 12px; padding: 40px; text-align: center; }
-.placeholder svg { width: 48px; height: 48px; opacity: 0.3; }
-.placeholder h3 { font-size: 16px; font-weight: 600; color: #6b7280; }
-.placeholder p { font-size: 13px; line-height: 1.6; max-width: 260px; }
+.post-form-btns { display: flex; gap: 10px; }
+.post-submit { flex: 1; background: var(--navy-ink); color: white; border: none; border-radius: var(--r-lg); height: 48px; font-size: var(--fs-body); font-weight: 700; cursor: pointer; }
+.post-cancel { background: white; color: var(--text); border: 1.5px solid var(--line-strong); border-radius: var(--r-lg); height: 48px; padding: 0 16px; font-size: var(--fs-body); cursor: pointer; }
+.option-btn { background: white; border: 1.5px solid var(--line-strong); border-radius: var(--r-lg); height: 52px; padding: 0 16px; font-size: var(--fs-body); color: var(--text); cursor: pointer; text-align: left; width: 100%; font-weight: 600; }
+.option-btn:hover { border-color: var(--navy-ink); background: var(--info-bg); }
+.option-btn.correct { background: var(--ok-bg); border-color: var(--ok-fg); color: var(--ok-fg); }
+.option-btn.incorrect { background: var(--bad-bg); border-color: var(--bad-fg); color: var(--bad-fg); }
+.option-btn.reveal { background: var(--info-bg); border-color: var(--navy-ink); }
+.placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); gap: 12px; padding: 40px; text-align: center; }
+.placeholder svg { width: 48px; height: 48px; opacity: 0.4; stroke: var(--text-muted); stroke-width: 2; fill: none; }
+.placeholder h3 { font-family: var(--font-display); font-size: var(--fs-h3); font-weight: 700; color: var(--text); }
+.placeholder p { font-size: var(--fs-body); line-height: 1.6; max-width: 280px; color: var(--text-muted); }
 .menu-btn { display: none; background: none; border: none; cursor: pointer; padding: 4px; }
-.history-card { background:white; border:1px solid #e5e7eb; border-radius:10px; padding:14px; }
-.history-type { font-size:14px; font-weight:600; color:#0a1f44; }
-.history-meta { font-size:12px; color:#9ca3af; margin-top:3px; }
-.history-notes { font-size:13px; color:#374151; margin-top:6px; }
-.issue-card { background:#fff5f5; border:1px solid #fecaca; border-radius:10px; padding:14px; }
-.issue-desc { font-size:14px; color:#1f2937; }
-.issue-meta { font-size:12px; color:#9ca3af; margin-top:4px; }
-.maintenance-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:0.5px solid #e5e7eb; font-size:13px; }
-.maintenance-row:last-child { border-bottom:none; }
-@media (max-width: 640px) {
-  #sidebar { position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; transform: translateX(-100%); }
-  #sidebar.open { transform: translateX(0); }
-  .menu-btn { display: flex; align-items: center; justify-content: center; }
-  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
-  .overlay.visible { display: block; }
+.history-card { background: white; border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-card); padding: 16px; flex-shrink: 0; }
+.history-type { font-size: var(--fs-body-lg); font-weight: 700; color: var(--text); }
+.history-meta { font-size: var(--fs-caption); color: var(--text-muted); margin-top: 3px; }
+.history-notes { font-size: var(--fs-body); color: var(--text); margin-top: 6px; }
+.issue-card { background: var(--bad-bg); border: 1px solid #F3C6C0; border-radius: var(--r-lg); padding: 16px; flex-shrink: 0; }
+.issue-desc { font-size: var(--fs-body); color: var(--text); }
+.issue-meta { font-size: var(--fs-caption); color: var(--text-muted); margin-top: 4px; }
+.maintenance-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-body); }
+.maintenance-row:last-child { border-bottom: none; }
+
+/* ---- Responsive shell switch (§4) ---- */
+@media (max-width: 899px) {
+  #sidebar, .sidebar-footer, .page-header { display: none; }
+  .app-bar { display: flex; }
+  .tab-bar { display: grid; }
+  .channel-view.active { padding-bottom: 76px; }
+  .messages { padding-bottom: 0; }
+  .page-content { padding: 20px 16px; }
+}
+@media (min-width: 900px) {
+  #app-shell { flex-direction: row; }
+  .page-header { display: flex; padding: 36px 48px 24px; }
+  .page-content { padding: 32px 48px; }
+  .tab-bar, .sheet, .sheet-backdrop, .app-bar { display: none !important; }
 }
 </style>
 </head>
 <body>
 <div id="login-screen">
   <div class="login-logo">The Local Plumber</div>
+  <div class="login-rule"></div>
   <div class="login-sub">Crew Portal</div>
   <div class="login-card">
-    <h2>Sign in to your account</h2>
+    <h2>Sign in</h2>
+    <label class="field-label" for="name-select">Name</label>
     <select class="login-select" id="name-select">
       <option value="">Select your name...</option>
     </select>
     <div class="pin-label">Enter your PIN</div>
-    <input class="pin-input" type="password" id="pin-input" maxlength="4" placeholder="••••" />
+    <input class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" id="pin-input" maxlength="4" placeholder="••••" />
     <button class="login-btn" onclick="doLogin()">Sign in</button>
     <div class="login-error" id="login-error">Incorrect PIN. Try again.</div>
   </div>
 </div>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 <div id="app-shell">
+  <!-- MOBILE APP BAR -->
+  <div class="app-bar" id="app-bar">
+    <div class="app-bar-row1">
+      <div class="app-bar-brand">
+        <div class="app-bar-brand-rule"></div>
+        <div class="app-bar-brand-name">The Local Plumber</div>
+      </div>
+      <button class="app-bar-avatar" id="appbar-avatar" onclick="openMoreSheet()" aria-label="Account menu"></button>
+    </div>
+    <div class="app-bar-row2">
+      <div>
+        <div class="app-bar-eyebrow" id="appbar-eyebrow">Schedule</div>
+        <h1 class="app-bar-title" id="appbar-title">My day</h1>
+      </div>
+    </div>
+  </div>
+  <!-- MOBILE TAB BAR -->
+  <div class="tab-bar" id="tab-bar">
+    <button class="tab-item active" data-channel="myday" onclick="switchChannel('myday')">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>My day</span>
+    </button>
+    <button class="tab-item" data-channel="assistant" onclick="switchChannel('assistant')">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span>Assistant</span>
+    </button>
+    <button class="tab-item" data-channel="tools" onclick="switchChannel('tools')">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      <span>Tools</span>
+    </button>
+    <button class="tab-item" data-channel="training" onclick="switchChannel('training')">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span>Training</span>
+    </button>
+    <button class="tab-item" id="tab-more" onclick="openMoreSheet()">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+      <span>More</span>
+    </button>
+  </div>
+  <!-- MOBILE MORE SHEET -->
+  <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeMoreSheet()"></div>
+  <div class="sheet" id="more-sheet" role="dialog" aria-label="More">
+    <div class="sheet-handle"></div>
+    <button class="sheet-row" onclick="switchChannel('mypay'); closeMoreSheet();">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      My pay
+    </button>
+    <button class="sheet-row" id="sheet-dashboard" onclick="switchChannel('dashboard'); closeMoreSheet();" style="display:none;">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      Dashboard
+    </button>
+    <button class="sheet-row" onclick="switchChannel('updates'); closeMoreSheet();">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Shop updates
+      <span class="nav-badge" id="updates-badge-mobile" style="display:none;margin-left:auto;">!</span>
+    </button>
+    <button class="sheet-row" onclick="switchChannel('vehicles'); closeMoreSheet();">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM18.5 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+      Vehicle maintenance
+    </button>
+    <div class="sheet-divider"></div>
+    <div class="sheet-user">
+      <div class="sheet-user-name" id="sheet-user-name"></div>
+      <div class="sheet-user-role" id="sheet-user-role"></div>
+    </div>
+    <button class="btn-secondary sheet-signout" style="width:calc(100% - 16px);" onclick="doLogout()">Sign out</button>
+  </div>
+  <!-- DESKTOP SIDEBAR -->
   <div id="sidebar">
     <div class="sidebar-header">
       <div class="brand-name">The Local Plumber</div>
+      <div class="brand-rule"></div>
       <div class="brand-tag">Crew Portal</div>
     </div>
     <div class="user-section">
-      <div class="user-greeting">Welcome back,</div>
-      <div class="user-name" id="sidebar-name"></div>
-      <div class="user-role" id="sidebar-role"></div>
+      <div class="user-avatar" id="sidebar-avatar"></div>
+      <div>
+        <div class="user-name" id="sidebar-name"></div>
+        <div class="user-role" id="sidebar-role"></div>
+      </div>
     </div>
     <div class="nav-section">
       <div class="nav-label">Channels</div>
-      <div class="nav-item active" onclick="switchChannel('myday', this)">
+      <div class="nav-item active" data-channel="myday" onclick="switchChannel('myday')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         My day
       </div>
-      <div class="nav-item" onclick="switchChannel('mypay', this)">
+      <div class="nav-item" data-channel="mypay" onclick="switchChannel('mypay')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         My pay
       </div>
-      <div class="nav-item" id="nav-dashboard" onclick="switchChannel('dashboard', this)" style="display:none;">
+      <div class="nav-item" id="nav-dashboard" data-channel="dashboard" onclick="switchChannel('dashboard')" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
         Dashboard
       </div>
-      <div class="nav-item" onclick="switchChannel('assistant', this)">
+      <div class="nav-item" data-channel="assistant" onclick="switchChannel('assistant')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Assistant
       </div>
-      <div class="nav-item" onclick="switchChannel('tools', this)">
+      <div class="nav-item" data-channel="tools" onclick="switchChannel('tools')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
         Shop tools
       </div>
-      <div class="nav-item" onclick="switchChannel('updates', this)">
+      <div class="nav-item" data-channel="updates" onclick="switchChannel('updates')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
         Shop updates
         <span class="nav-badge" id="updates-badge" style="display:none">!</span>
       </div>
-      <div class="nav-item" onclick="switchChannel('training', this)">
+      <div class="nav-item" data-channel="training" onclick="switchChannel('training')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
         Training
       </div>
-      <div class="nav-item" onclick="switchChannel('vehicles', this)">
+      <div class="nav-item" data-channel="vehicles" onclick="switchChannel('vehicles')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8zM5.5 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM18.5 21a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
         Vehicle maintenance
       </div>
@@ -187,17 +447,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     </div>
   </div>
   <div id="main">
-    <div class="topbar">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button class="menu-btn" onclick="openSidebar()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a1f44" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <div class="topbar-left">
-          <h2 id="topbar-title">My day</h2>
-          <p id="topbar-sub">Today's jobs, pulled live from Housecall Pro</p>
-        </div>
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="eyebrow" id="topbar-eyebrow">Schedule</div>
+        <h2 id="topbar-title">My day</h2>
+        <p id="topbar-sub">Today's jobs, pulled live from Housecall Pro</p>
       </div>
-      <span class="topbar-tag" id="topbar-tag">Schedule</span>
     </div>
     <!-- ASSISTANT -->
     <div class="channel-view" id="ch-assistant">
@@ -221,39 +476,39 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     </div>
     <!-- MY DAY -->
     <div class="channel-view active" id="ch-myday">
-      <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-        <div style="font-size:13px;color:#6b7280;">Your jobs for today, pulled live from Housecall Pro</div>
-        <button onclick="loadMyDay()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+      <div class="list-header">
+        <div class="list-header-sub">Your jobs for today, pulled live from Housecall Pro</div>
+        <button onclick="loadMyDay()" class="btn-icon" aria-label="Refresh"><svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
       </div>
-      <div id="myday-list" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
-        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading today's jobs...</div>
+      <div id="myday-list" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div class="state-msg">Loading today's jobs...</div>
       </div>
     </div>
     <!-- MY PAY -->
     <div class="channel-view" id="ch-mypay">
-      <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-        <div style="font-size:13px;color:#6b7280;">Estimated take-home for this week, based on completed jobs</div>
-        <button onclick="loadMyPay()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+      <div class="list-header">
+        <div class="list-header-sub">Estimated take-home for this week, based on completed jobs</div>
+        <button onclick="loadMyPay()" class="btn-icon" aria-label="Refresh"><svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
       </div>
       <div id="mypay-content" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;">
-        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading this week's jobs...</div>
+        <div class="state-msg">Loading this week's jobs...</div>
       </div>
     </div>
     <!-- DASHBOARD -->
     <div class="channel-view" id="ch-dashboard">
-      <div style="padding:12px 20px 0;background:white;border-bottom:1px solid #e5e7eb;flex-shrink:0;">
+      <div style="padding:12px 20px 0;background:white;border-bottom:1px solid var(--line-strong);flex-shrink:0;">
         <div style="display:flex;gap:8px;padding-bottom:12px;">
-          <button id="dash-tab-status" onclick="switchDashboardTab('status')" style="background:#0a1f44;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">Plumber status</button>
-          <button id="dash-tab-reporting" onclick="switchDashboardTab('reporting')" style="background:#f4f6f9;color:#374151;border:1px solid #e5e7eb;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">Reporting</button>
+          <button id="dash-tab-status" onclick="switchDashboardTab('status')" style="background:var(--navy-ink);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">Plumber status</button>
+          <button id="dash-tab-reporting" onclick="switchDashboardTab('reporting')" style="background:var(--bg);color:var(--text);border:1px solid var(--line-strong);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;">Reporting</button>
         </div>
       </div>
       <div id="dashboard-status-view" style="flex:1;display:flex;flex-direction:column;min-height:0;">
-        <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-          <div style="font-size:13px;color:#6b7280;">Live status for everyone with jobs today</div>
-          <button onclick="loadDashboard()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+        <div class="list-header">
+          <div class="list-header-sub">Live status for everyone with jobs today</div>
+          <button onclick="loadDashboard()" class="btn-icon" aria-label="Refresh"><svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
         </div>
-        <div id="dashboard-list" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
-          <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading dashboard...</div>
+        <div id="dashboard-list" class="dashboard-list" style="flex:1;overflow-y:auto;padding:16px;">
+          <div class="state-msg">Loading dashboard...</div>
         </div>
       </div>
       <div id="dashboard-reporting-view" style="flex:1;display:none;flex-direction:column;min-height:0;">
@@ -269,60 +524,60 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
     <!-- TRAINING -->
     <div class="channel-view" id="ch-training">
       <div style="flex:1;overflow-y:auto;">
-        <div id="training-home" style="padding:20px;display:flex;flex-direction:column;gap:16px;">
-          <div style="background:#0a1f44;border-radius:14px;padding:20px;color:white;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;margin-bottom:8px;">Tip of the day</div>
-            <div id="tip-text" style="font-size:14px;line-height:1.7;opacity:0.9;">Loading today's tip...</div>
+        <div id="training-home" style="padding:16px;display:flex;flex-direction:column;gap:16px;">
+          <div class="note-panel">
+            <div class="eyebrow">Tip of the day</div>
+            <div id="tip-text" style="font-size:var(--fs-body-lg);line-height:1.45;color:var(--text);">Loading today's tip...</div>
           </div>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;">Select your level</div>
+          <div class="eyebrow" style="color:var(--text-muted);">Select your level</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div onclick="selectLevel('apprentice')" style="background:white;border:1.5px solid #e5e7eb;border-radius:14px;padding:20px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='#0a1f44'" onmouseout="this.style.borderColor='#e5e7eb'">
-              <div style="font-size:28px;margin-bottom:8px;">🔧</div>
-              <div style="font-size:15px;font-weight:600;color:#0a1f44;">Apprentice</div>
-              <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Tools, materials, terminology</div>
-            </div>
-            <div onclick="selectLevel('journeyman')" style="background:white;border:1.5px solid #e5e7eb;border-radius:14px;padding:20px;cursor:pointer;text-align:center;" onmouseover="this.style.borderColor='#0a1f44'" onmouseout="this.style.borderColor='#e5e7eb'">
-              <div style="font-size:28px;margin-bottom:8px;">⚙️</div>
-              <div style="font-size:15px;font-weight:600;color:#0a1f44;">Journeyman</div>
-              <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Code, fixtures, advanced skills</div>
-            </div>
+            <button onclick="selectLevel('apprentice')" class="card" style="cursor:pointer;text-align:center;">
+              <svg class="icon" viewBox="0 0 24 24" width="32" height="32" style="stroke:var(--brass);margin:0 auto 8px;"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+              <div class="display" style="font-size:24px;color:var(--text);">Apprentice</div>
+              <div style="font-size:var(--fs-body);color:var(--text-muted);margin-top:4px;">Tools, materials, terminology</div>
+            </button>
+            <button onclick="selectLevel('journeyman')" class="card" style="cursor:pointer;text-align:center;">
+              <svg class="icon" viewBox="0 0 24 24" width="32" height="32" style="stroke:var(--brass);margin:0 auto 8px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              <div class="display" style="font-size:24px;color:var(--text);">Journeyman</div>
+              <div style="font-size:var(--fs-body);color:var(--text-muted);margin-top:4px;">Code, fixtures, advanced skills</div>
+            </button>
           </div>
         </div>
         <div id="training-topics" style="padding:20px;display:none;flex-direction:column;gap:12px;">
-          <button onclick="showTrainingHome()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;" id="topics-title">Choose a topic</div>
+          <button onclick="showTrainingHome()" style="background:none;border:none;color:var(--navy-ink);font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+          <div style="font-size:15px;font-weight:600;color:var(--navy-ink);" id="topics-title">Choose a topic</div>
           <div id="topics-list" style="display:flex;flex-direction:column;gap:10px;"></div>
         </div>
         <div id="training-quiz" style="padding:20px;display:none;flex-direction:column;gap:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <button onclick="showTopics()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;padding:0;">← Back</button>
-            <div style="font-size:12px;color:#9ca3af;" id="quiz-progress">Question 1 of 10</div>
+            <button onclick="showTopics()" style="background:none;border:none;color:var(--navy-ink);font-size:13px;font-weight:600;cursor:pointer;padding:0;">← Back</button>
+            <div style="font-size:12px;color:var(--text-muted);" id="quiz-progress">Question 1 of 10</div>
           </div>
-          <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;padding:20px;">
-            <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;" id="quiz-topic-label"></div>
-            <div style="font-size:15px;font-weight:600;color:#0a1f44;line-height:1.5;margin-bottom:16px;" id="quiz-question"></div>
+          <div style="background:white;border:1px solid var(--line-strong);border-radius:14px;padding:20px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;" id="quiz-topic-label"></div>
+            <div style="font-size:15px;font-weight:600;color:var(--navy-ink);line-height:1.5;margin-bottom:16px;" id="quiz-question"></div>
             <div id="quiz-options" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
           <div id="quiz-explanation" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px;font-size:13px;color:#0c4a6e;line-height:1.6;display:none;"></div>
-          <button id="quiz-next-btn" onclick="nextQuestion()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;display:none;">Next question</button>
+          <button id="quiz-next-btn" onclick="nextQuestion()" style="background:var(--navy-ink);color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;display:none;">Next question</button>
         </div>
         <div id="training-results" style="padding:20px;display:none;flex-direction:column;gap:16px;align-items:center;text-align:center;">
           <div style="font-size:48px;" id="results-emoji"></div>
-          <div style="font-size:24px;font-weight:700;color:#0a1f44;" id="results-score"></div>
-          <div style="font-size:14px;color:#6b7280;" id="results-message"></div>
-          <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;padding:16px;width:100%;">
-            <div style="font-size:13px;color:#6b7280;margin-bottom:4px;">Topic</div>
-            <div style="font-size:15px;font-weight:600;color:#0a1f44;" id="results-topic"></div>
+          <div style="font-size:24px;font-weight:700;color:var(--navy-ink);" id="results-score"></div>
+          <div style="font-size:14px;color:var(--text-muted);" id="results-message"></div>
+          <div style="background:white;border:1px solid var(--line-strong);border-radius:14px;padding:16px;width:100%;">
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">Topic</div>
+            <div style="font-size:15px;font-weight:600;color:var(--navy-ink);" id="results-topic"></div>
           </div>
-          <button onclick="showTopics()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;width:100%;">Take another quiz</button>
-          <button onclick="showTrainingHome()" style="background:#f4f6f9;color:#374151;border:none;border-radius:10px;padding:14px;font-size:15px;cursor:pointer;width:100%;">Back to home</button>
+          <button onclick="showTopics()" style="background:var(--navy-ink);color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;width:100%;">Take another quiz</button>
+          <button onclick="showTrainingHome()" style="background:var(--bg);color:var(--text);border:none;border-radius:10px;padding:14px;font-size:15px;cursor:pointer;width:100%;">Back to home</button>
         </div>
       </div>
     </div>
     <!-- SHOP UPDATES -->
     <div class="channel-view" id="ch-updates">
       <div class="bulletin-area" id="bulletin-area">
-        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading updates...</div>
+        <div class="state-msg">Loading updates...</div>
       </div>
       <div id="post-form-area" style="display:none;">
         <button class="post-btn" onclick="togglePostForm()">+ Post an update</button>
@@ -341,14 +596,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
       <div style="flex:1;overflow-y:auto;" id="vehicles-container">
         <div id="vehicles-home" style="padding:20px;display:flex;flex-direction:column;gap:14px;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div style="font-size:15px;font-weight:600;color:#0a1f44;">Fleet overview</div>
-            <button onclick="loadVehicles()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+            <div style="font-size:15px;font-weight:600;color:var(--navy-ink);">Fleet overview</div>
+            <button onclick="loadVehicles()" class="btn-icon" aria-label="Refresh"><svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
           </div>
           <div id="vehicles-grid" style="display:flex;flex-direction:column;gap:12px;"></div>
         </div>
         <div id="vehicle-detail" style="padding:20px;display:none;flex-direction:column;gap:14px;">
-          <button onclick="showVehiclesHome()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back to fleet</button>
-          <div style="background:#0a1f44;border-radius:14px;padding:18px;color:white;">
+          <button onclick="showVehiclesHome()" style="background:none;border:none;color:var(--navy-ink);font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back to fleet</button>
+          <div style="background:var(--navy-ink);border-radius:14px;padding:18px;color:white;">
             <div style="font-size:18px;font-weight:700;" id="detail-truck-name"></div>
             <div style="font-size:13px;opacity:0.6;margin-top:2px;" id="detail-truck-info"></div>
             <div style="margin-top:14px;">
@@ -356,35 +611,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
               <div style="font-size:22px;font-weight:700;margin-top:2px;" id="detail-mileage"></div>
             </div>
           </div>
-          <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;">
-            <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em;">Maintenance status</div>
+          <div style="background:white;border:1px solid var(--line-strong);border-radius:12px;padding:16px;">
+            <div style="font-size:13px;font-weight:600;color:var(--navy-ink);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em;">Maintenance status</div>
             <div id="maintenance-status" style="display:flex;flex-direction:column;gap:0;"></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <button onclick="showUpdateMileage()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Update mileage</button>
-            <button onclick="showLogService()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Log service</button>
-            <button onclick="showReportIssue()" style="background:white;color:#0a1f44;border:1.5px solid #0a1f44;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Report issue</button>
-            <button onclick="showServiceHistory()" style="background:white;color:#0a1f44;border:1.5px solid #0a1f44;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">View history</button>
+            <button onclick="showUpdateMileage()" style="background:var(--navy-ink);color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Update mileage</button>
+            <button onclick="showLogService()" style="background:var(--navy-ink);color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Log service</button>
+            <button onclick="showReportIssue()" style="background:white;color:var(--navy-ink);border:1.5px solid var(--navy-ink);border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">Report issue</button>
+            <button onclick="showServiceHistory()" style="background:white;color:var(--navy-ink);border:1.5px solid var(--navy-ink);border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;">View history</button>
           </div>
           <div id="open-issues-section" style="display:none;">
-            <div style="font-size:13px;font-weight:600;color:#dc2626;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Open issues</div>
+            <div style="font-size:13px;font-weight:600;color:var(--bad-fg);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Open issues</div>
             <div id="open-issues-list" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
         </div>
         <div id="vehicle-mileage-form" style="padding:20px;display:none;flex-direction:column;gap:14px;">
-          <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;">Update mileage</div>
-          <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
-            <div style="font-size:13px;color:#6b7280;">Current recorded mileage: <span id="mileage-form-current" style="font-weight:600;color:#0a1f44;"></span></div>
-            <input type="number" id="new-mileage-input" placeholder="Enter current odometer reading" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:15px;outline:none;width:100%;" />
-            <button onclick="submitMileageUpdate()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Save mileage</button>
+          <button onclick="showVehicleDetail()" style="background:none;border:none;color:var(--navy-ink);font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+          <div style="font-size:15px;font-weight:600;color:var(--navy-ink);">Update mileage</div>
+          <div style="background:white;border:1px solid var(--line-strong);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:13px;color:var(--text-muted);">Current recorded mileage: <span id="mileage-form-current" style="font-weight:600;color:var(--navy-ink);"></span></div>
+            <input type="number" id="new-mileage-input" placeholder="Enter current odometer reading" style="border:1.5px solid var(--line-strong);border-radius:10px;padding:12px;font-size:15px;outline:none;width:100%;" />
+            <button onclick="submitMileageUpdate()" style="background:var(--navy-ink);color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Save mileage</button>
           </div>
         </div>
         <div id="vehicle-service-form" style="padding:20px;display:none;flex-direction:column;gap:14px;">
-          <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;">Log service</div>
-          <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
-            <select id="service-type-select" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:14px;outline:none;background:white;width:100%;">
+          <button onclick="showVehicleDetail()" style="background:none;border:none;color:var(--navy-ink);font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+          <div style="font-size:15px;font-weight:600;color:var(--navy-ink);">Log service</div>
+          <div style="background:white;border:1px solid var(--line-strong);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <select id="service-type-select" style="border:1.5px solid var(--line-strong);border-radius:10px;padding:12px;font-size:14px;outline:none;background:white;width:100%;">
               <option value="">Select service type...</option>
               <option value="Oil change">Oil change</option>
               <option value="Tire rotation">Tire rotation</option>
@@ -394,34 +649,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
               <option value="Transmission service">Transmission service</option>
               <option value="Other">Other</option>
             </select>
-            <input type="number" id="service-mileage-input" placeholder="Mileage at time of service" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:15px;outline:none;width:100%;" />
-            <textarea id="service-notes-input" placeholder="Notes (optional)" style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:14px;outline:none;width:100%;min-height:80px;resize:vertical;font-family:inherit;"></textarea>
-            <button onclick="submitServiceLog()" style="background:#0a1f44;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Save service record</button>
+            <input type="number" id="service-mileage-input" placeholder="Mileage at time of service" style="border:1.5px solid var(--line-strong);border-radius:10px;padding:12px;font-size:15px;outline:none;width:100%;" />
+            <textarea id="service-notes-input" placeholder="Notes (optional)" style="border:1.5px solid var(--line-strong);border-radius:10px;padding:12px;font-size:14px;outline:none;width:100%;min-height:80px;resize:vertical;font-family:inherit;"></textarea>
+            <button onclick="submitServiceLog()" style="background:var(--navy-ink);color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Save service record</button>
           </div>
         </div>
         <div id="vehicle-issue-form" style="padding:20px;display:none;flex-direction:column;gap:14px;">
-          <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;">Report an issue</div>
-          <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
-            <div style="font-size:13px;color:#6b7280;">Describe what you noticed — even small things are worth logging.</div>
-            <textarea id="issue-description-input" placeholder="e.g. Slow leak on rear passenger tire, pulling slightly to the left..." style="border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;font-size:14px;outline:none;width:100%;min-height:100px;resize:vertical;font-family:inherit;"></textarea>
-            <button onclick="submitIssueReport()" style="background:#dc2626;color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Submit issue report</button>
+          <button onclick="showVehicleDetail()" style="background:none;border:none;color:var(--navy-ink);font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+          <div style="font-size:15px;font-weight:600;color:var(--navy-ink);">Report an issue</div>
+          <div style="background:white;border:1px solid var(--line-strong);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div style="font-size:13px;color:var(--text-muted);">Describe what you noticed — even small things are worth logging.</div>
+            <textarea id="issue-description-input" placeholder="e.g. Slow leak on rear passenger tire, pulling slightly to the left..." style="border:1.5px solid var(--line-strong);border-radius:10px;padding:12px;font-size:14px;outline:none;width:100%;min-height:100px;resize:vertical;font-family:inherit;"></textarea>
+            <button onclick="submitIssueReport()" style="background:var(--bad-fg);color:white;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">Submit issue report</button>
           </div>
         </div>
         <div id="vehicle-history" style="padding:20px;display:none;flex-direction:column;gap:14px;">
-          <button onclick="showVehicleDetail()" style="background:none;border:none;color:#0a1f44;font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
-          <div style="font-size:15px;font-weight:600;color:#0a1f44;" id="history-title">Service history</div>
+          <button onclick="showVehicleDetail()" style="background:none;border:none;color:var(--navy-ink);font-size:13px;font-weight:600;cursor:pointer;text-align:left;padding:0;">← Back</button>
+          <div style="font-size:15px;font-weight:600;color:var(--navy-ink);" id="history-title">Service history</div>
           <div id="history-list" style="display:flex;flex-direction:column;gap:10px;"></div>
         </div>
       </div>
     </div>
     <!-- SHOP TOOLS -->
     <div class="channel-view" id="ch-tools">
-      <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-        <div style="font-size:13px;color:#6b7280;">Tap any tool to check it out or return it</div>
-        <button onclick="loadTools()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+      <div class="list-header">
+        <div class="list-header-sub">Tap any tool to check it out or return it</div>
+        <button onclick="loadTools()" class="btn-icon" aria-label="Refresh"><svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
       </div>
-      <div id="tools-grid" style="flex:1;overflow-y:auto;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;align-content:start;"></div>
+      <div id="tools-grid" class="tools-grid" style="flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start;"></div>
     </div>
   </div>
 </div>
@@ -488,17 +743,25 @@ async function doLogin() {
   currentUser = data;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-shell').style.display = 'flex';
+  const roleLabel = data.role.charAt(0).toUpperCase() + data.role.slice(1);
+  const initial = (data.name || '?').charAt(0).toUpperCase();
   document.getElementById('sidebar-name').textContent = data.name;
-  document.getElementById('sidebar-role').textContent = data.role.charAt(0).toUpperCase() + data.role.slice(1);
+  document.getElementById('sidebar-role').textContent = roleLabel;
+  document.getElementById('sidebar-avatar').textContent = initial;
+  document.getElementById('appbar-avatar').textContent = initial;
+  document.getElementById('sheet-user-name').textContent = data.name;
+  document.getElementById('sheet-user-role').textContent = roleLabel;
   loadConversation();
   loadUpdates();
   loadTools();
   loadVehicles();
   loadTip();
   loadMyDay();
+  document.getElementById('appbar-eyebrow').textContent = todayEyebrow();
   if (['manager','GM','Owner'].includes(data.role)) {
     document.getElementById('post-form-area').style.display = 'block';
     document.getElementById('nav-dashboard').style.display = 'flex';
+    document.getElementById('sheet-dashboard').style.display = 'flex';
   }
   addMessage('Hey ' + data.name + '! What can I help you with today? Ask me anything about code, materials, fittings, or best practices. You can also tap the camera icon to send a photo of what you\'re working on.', 'ai');
 }
@@ -564,7 +827,7 @@ async function sendMessage() {
       { type: 'image', source: imageSource },
       { type: 'text', text: text || 'What am I looking at here? What should I know or do next?' }
     ];
-    addMessage(text || (imageUrl ? '' : '📷 Photo sent'), 'user', true, imageUrl);
+    addMessage(text || (imageUrl ? '' : 'Photo sent'), 'user', true, imageUrl);
   } else {
     userContent = text;
     addMessage(text, 'user');
@@ -641,7 +904,7 @@ function addMessage(text, type, scroll=true, imageUrl=null) {
 async function loadUpdates() {
   const { data } = await sb.from('shop_updates').select('*').order('created_at', { ascending: false });
   const area = document.getElementById('bulletin-area');
-  if (!data || data.length === 0) { area.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No updates yet. Check back soon.</div>'; return; }
+  if (!data || data.length === 0) { area.innerHTML = '<div class="state-msg">No updates yet. Check back soon.</div>'; return; }
   area.innerHTML = '';
   data.forEach(u => {
     const card = document.createElement('div');
@@ -666,38 +929,36 @@ async function submitUpdate() {
 }
 async function loadTools() {
   const grid = document.getElementById('tools-grid');
-  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading tools...</div>';
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:40px 0;">Loading tools...</div>';
   try {
     const response = await fetch('/api/tools');
     const tools = await response.json();
-    if (!tools.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No tools found.</div>'; return; }
+    if (!tools.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:40px 0;">No tools found.</div>'; return; }
     let currentCategory = '';
     grid.innerHTML = '';
     tools.forEach(tool => {
       if (tool.category !== currentCategory) {
         currentCategory = tool.category;
         const label = document.createElement('div');
-        label.style.cssText = 'grid-column:1/-1;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;padding-top:4px;';
+        label.className = 'eyebrow';
+        label.style.cssText = 'grid-column:1/-1;color:var(--text-muted);padding-top:4px;';
         label.textContent = currentCategory;
         grid.appendChild(label);
       }
       const isOut = !!tool.checked_out_by;
-      const card = document.createElement('div');
-      card.style.cssText = `background:white;border:1.5px solid ${isOut ? '#fecaca' : '#d1fae5'};border-radius:12px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:8px;`;
+      const card = document.createElement('button');
+      card.className = 'card';
+      card.setAttribute('aria-pressed', isOut ? 'true' : 'false');
+      card.style.cssText = 'cursor:pointer;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%;';
       card.innerHTML = `
-        <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">${tool.category}</div>
-        <div style="font-size:14px;font-weight:600;color:#0a1f44;line-height:1.3;">${tool.name}</div>
-        <div style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 8px;border-radius:20px;background:${isOut ? '#fee2e2' : '#d1fae5'};color:${isOut ? '#991b1b' : '#065f46'};">
-          <span style="width:7px;height:7px;border-radius:50%;background:${isOut ? '#ef4444' : '#10b981'};display:inline-block;"></span>
-          ${isOut ? 'Checked out' : 'Available'}
-        </div>
-        ${isOut ? `<div style="font-size:12px;color:#6b7280;">${tool.checked_out_by}</div>` : ''}
+        <div class="display" style="font-size:20px;color:var(--text);line-height:1.15;">${tool.name}</div>
+        <span class="chip ${isOut ? 'bad' : 'ok'}" style="align-self:flex-start;">${isOut ? 'Checked out · ' + tool.checked_out_by : 'Available'}</span>
       `;
       card.onclick = () => handleToolTap(tool);
       grid.appendChild(card);
     });
   } catch(err) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading tools. Try refreshing.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:40px 0;">Error loading tools. Try refreshing.</div>';
   }
 }
 async function handleToolTap(tool) {
@@ -722,11 +983,11 @@ async function loadTip() {
   }
 }
 function statusMeta(status) {
-  if (status === 'in progress') return { label: 'In progress', color: '#0a1f44', bg: '#e8f0fe', text: '#1a3a6b' };
-  if (status === 'scheduled') return { label: 'Scheduled', color: '#f59e0b', bg: '#fef3c7', text: '#92400e' };
-  if (status && status.startsWith('complete')) return { label: 'Complete', color: '#10b981', bg: '#d1fae5', text: '#065f46' };
-  if (status && status.includes('cancel')) return { label: 'Canceled', color: '#9ca3af', bg: '#f3f4f6', text: '#6b7280' };
-  return { label: status || 'Unknown', color: '#9ca3af', bg: '#f3f4f6', text: '#6b7280' };
+  if (status && status.startsWith('complete')) return { label: 'Complete', chip: 'ok' };
+  if (status === 'in progress') return { label: 'In progress', chip: 'info' };
+  if (status === 'scheduled') return { label: 'Scheduled', chip: 'info' };
+  if (status && status.includes('cancel')) return { label: 'Canceled', chip: 'bad' };
+  return { label: status || 'Unknown', chip: 'info' };
 }
 function formatJobTime(job) {
   if (!job.scheduled_start) return '';
@@ -734,59 +995,79 @@ function formatJobTime(job) {
   const end = job.scheduled_end ? new Date(job.scheduled_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
   return end ? `${start} – ${end}` : start;
 }
+function splitTime(iso) {
+  if (!iso) return null;
+  const full = new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const m = full.match(/^(.*)\s(AM|PM)$/i);
+  return m ? { num: m[1], ampm: m[2] } : { num: full, ampm: '' };
+}
+function directionsUrl(address) {
+  const q = encodeURIComponent(address || '');
+  return /android/i.test(navigator.userAgent) ? `https://www.google.com/maps/search/?api=1&query=${q}` : `https://maps.apple.com/?q=${q}`;
+}
 function jobCardHTML(job) {
   const sm = statusMeta(job.work_status);
   const materials = (job.line_items || []).filter(li => li.name);
+  const start = splitTime(job.scheduled_start);
+  const end = job.scheduled_end ? new Date(job.scheduled_end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
   return `
-    <div style="background:white;border:1px solid #e5e7eb;border-left:4px solid ${sm.color};border-radius:12px;padding:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
-        <div>
-          <div style="font-size:15px;font-weight:700;color:#0a1f44;">${job.job_type}</div>
-          <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${job.customer_name}${job.address ? ' · ' + job.address : ''}</div>
-        </div>
-        <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:${sm.bg};color:${sm.text};white-space:nowrap;">${sm.label}</span>
+    <div class="card job-card">
+      <div class="job-card-time">
+        ${start ? `<div class="job-card-time-arrive"><span class="job-card-time-num">${start.num}</span><span class="job-card-time-ampm">${start.ampm}</span></div>` : '<div class="job-card-time-arrive">—</div>'}
+        ${end ? `<div class="job-card-time-to">to</div><div class="job-card-time-end">${end}</div>` : ''}
       </div>
-      <div style="font-size:13px;color:#374151;margin-bottom:8px;">${formatJobTime(job)}</div>
-      ${job.notes && job.notes.length ? `<div style="background:#f9fafb;border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;margin-bottom:4px;">Notes</div>
-        ${job.notes.map(n => `<div style="font-size:13px;color:#374151;line-height:1.5;white-space:pre-line;">${n}</div>`).join('<hr style="border:none;border-top:1px solid #e5e7eb;margin:6px 0;">')}
-      </div>` : ''}
-      ${materials.length ? `<div>
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;margin-bottom:4px;">Materials / line items</div>
-        ${materials.map(li => `<div style="font-size:13px;color:#374151;padding:3px 0;">${li.quantity ? li.quantity + '× ' : ''}${li.name}</div>`).join('')}
-      </div>` : ''}
+      <div class="job-card-body">
+        <div class="job-card-top">
+          <h2>${job.job_type}</h2>
+          <span class="chip ${sm.chip}">${sm.label}</span>
+        </div>
+        <div class="job-card-customer">${job.customer_name || 'Unknown customer'}</div>
+        ${job.address ? `<a class="job-card-address" href="${directionsUrl(job.address)}" target="_blank" rel="noopener"><svg class="icon" viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s-7-6.5-7-11a7 7 0 0114 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>${job.address}</a>` : ''}
+        ${job.notes && job.notes.length ? `<div class="note-panel">
+          <div class="eyebrow">Notes from the office</div>
+          ${job.notes.map(n => `<div style="font-size:var(--fs-body);color:var(--text);line-height:1.45;white-space:pre-line;">${n}</div>`).join('<hr style="border:none;border-top:1px solid var(--brass-line);margin:8px 0;">')}
+        </div>` : ''}
+        ${materials.length ? `<div>
+          <div class="eyebrow" style="color:var(--text-muted);margin-bottom:6px;">Materials / line items</div>
+          ${materials.map(li => `<div style="font-size:var(--fs-body);color:var(--text);padding:3px 0;">${li.quantity ? li.quantity + '× ' : ''}${li.name}</div>`).join('')}
+        </div>` : ''}
+        <div class="job-card-actions">
+          <a class="btn-primary" href="https://pro.housecallpro.com/app/jobs/${job.id}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">Open in Housecall Pro</a>
+          ${job.address ? `<a class="btn-secondary" href="${directionsUrl(job.address)}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">Get directions</a>` : ''}
+        </div>
+      </div>
     </div>
   `;
 }
 async function loadMyDay() {
   const list = document.getElementById('myday-list');
-  list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading today\'s jobs...</div>';
+  list.innerHTML = '<div class="state-msg">Loading today\'s jobs...</div>';
   try {
     const res = await fetch(`/api/housecall?action=my_day&plumber_name=${encodeURIComponent(currentUser.name)}`);
     const data = await res.json();
-    if (data.error) { list.innerHTML = `<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
-    if (data.warning) { list.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">${data.warning}</div>`; return; }
-    if (!data.jobs || !data.jobs.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No jobs on your board for today.</div>'; return; }
+    if (data.error) { list.innerHTML = `<div class="state-msg error">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
+    if (data.warning) { list.innerHTML = `<div class="state-msg">${data.warning}</div>`; return; }
+    if (!data.jobs || !data.jobs.length) { list.innerHTML = '<div class="card"><div class="eyebrow" style="color:var(--text-muted);margin-bottom:6px;">Nothing scheduled</div><div style="font-size:var(--fs-body);color:var(--text-muted);">No jobs on your board today. Pull down or tap Refresh to check again.</div></div>'; return; }
     list.innerHTML = data.jobs.map(jobCardHTML).join('');
   } catch (err) {
-    list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading your schedule. Try refreshing.</div>';
+    list.innerHTML = '<div class="state-msg">Error loading your schedule. Try refreshing.</div>';
   }
 }
 async function loadMyPay() {
   const el = document.getElementById('mypay-content');
-  el.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading this week\'s jobs...</div>';
+  el.innerHTML = '<div class="state-msg">Loading this week\'s jobs...</div>';
   try {
     const res = await fetch(`/api/paycheck?action=summary&plumber_id=${encodeURIComponent(currentUser.id)}&plumber_name=${encodeURIComponent(currentUser.name)}`);
     const data = await res.json();
-    if (data.error) { el.innerHTML = `<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Couldn't load: ${data.error}</div>`; return; }
+    if (data.error) { el.innerHTML = `<div class="state-msg error">Couldn't load: ${data.error}</div>`; return; }
     renderMyPay(data);
   } catch (err) {
-    el.innerHTML = '<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Something went wrong loading your pay estimate. Try refreshing.</div>';
+    el.innerHTML = '<div class="state-msg error">Something went wrong loading your pay estimate. Try refreshing.</div>';
   }
 }
 function payLine(label, amount, money, emphasize = false) {
   const sign = amount < 0 ? '−' : '';
-  return `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:${emphasize ? '#0a1f44' : '#6b7280'};font-weight:${emphasize ? '600' : '400'};">
+  return `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:${emphasize ? 'var(--navy-ink)' : 'var(--text-muted)'};font-weight:${emphasize ? '600' : '400'};">
     <div>${label}</div><div>${sign}${money(Math.abs(amount))}</div>
   </div>`;
 }
@@ -795,54 +1076,54 @@ function renderMyPay(data) {
   const money = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dateRange = `${new Date(data.week_start + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(data.week_end + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   el.innerHTML = `
-    <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
-      <div style="font-size:12px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">This week (${dateRange})</div>
-      <div style="font-size:28px;font-weight:700;color:#0a1f44;">${money(data.revenue)}</div>
-      <div style="font-size:13px;color:#6b7280;margin-top:2px;">${data.jobs_completed} job${data.jobs_completed !== 1 ? 's' : ''} completed so far</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">This week (${dateRange})</div>
+      <div class="display" style="font-size:34px;color:var(--navy-ink);">${money(data.revenue)}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">${data.jobs_completed} job${data.jobs_completed !== 1 ? 's' : ''} completed so far</div>
     </div>
-    <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
-      <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:10px;">Materials / receipts this week</div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:var(--navy-ink);margin-bottom:10px;">Materials / receipts this week</div>
       <div id="materials-list" style="display:flex;flex-direction:column;gap:2px;margin-bottom:${data.materials_entries.length ? '12px' : '4px'};">
         ${data.materials_entries.length
           ? data.materials_entries.map(e => materialEntryRow(e, money)).join('')
-          : '<div style="font-size:13px;color:#9ca3af;padding:4px 0 8px;">No expenses entered yet.</div>'}
+          : '<div style="font-size:13px;color:var(--text-muted);padding:4px 0 8px;">No expenses entered yet.</div>'}
       </div>
       <div style="display:flex;gap:8px;">
-        <input id="materials-input" type="number" min="0" step="0.01" placeholder="Amount spent" style="flex:1;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" />
-        <button onclick="addMaterialEntry()" style="background:#0a1f44;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;">Add</button>
+        <input id="materials-input" type="number" min="0" step="0.01" placeholder="Amount spent" style="flex:1;padding:10px 12px;border:1.5px solid var(--line-strong);border-radius:8px;font-size:14px;outline:none;" />
+        <button onclick="addMaterialEntry()" style="background:var(--navy-ink);color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;">Add</button>
       </div>
-      ${data.materials_entries.length ? `<div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:13px;font-weight:600;color:#0a1f44;">
+      ${data.materials_entries.length ? `<div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-strong);font-size:13px;font-weight:600;color:var(--navy-ink);">
         <div>Total materials</div><div>${money(data.materials)}</div>
       </div>` : ''}
     </div>
-    ${!data.materials_entries.length ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;">
-      <div style="font-size:16px;line-height:1.3;">⚠️</div>
-      <div style="font-size:13px;color:#92400e;line-height:1.5;"><strong>No materials entered yet — this estimate is not accurate.</strong> The breakdown below assumes $0 in materials, which is almost never true. Add your receipts above as you go so the take-home number below actually means something.</div>
+    ${!data.materials_entries.length ? `<div style="background:var(--warn-bg);border:1px solid #fde68a;border-radius:var(--r-lg);padding:14px 16px;display:flex;gap:10px;align-items:flex-start;flex-shrink:0;">
+      <svg class="icon" viewBox="0 0 24 24" width="20" height="20" style="stroke:var(--warn-fg);flex-shrink:0;margin-top:1px;"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      <div style="font-size:var(--fs-body);color:var(--warn-fg);line-height:1.5;"><strong>No materials entered yet — this estimate is not accurate.</strong> The breakdown below assumes $0 in materials, which is almost never true. Add your receipts above as you go so the take-home number below actually means something.</div>
     </div>` : ''}
-    <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
-      <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:12px;">Estimated breakdown</div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:600;color:var(--navy-ink);margin-bottom:12px;">Estimated breakdown</div>
       ${payLine('Revenue', data.revenue, money)}
       ${payLine(`Sales commission (${Math.round(data.sales_commission_rate * 100)}%)`, -(data.revenue - data.after_sales), money)}
       ${payLine('Materials', -data.materials, money)}
       ${payLine(`Your commission (${Math.round(data.commission_rate * 100)}%)`, data.commission_amount, money, true)}
       ${payLine('Vehicle', -data.vehicle_fee, money)}
       ${payLine('Tool account', -data.tool_fee, money)}
-      <div style="border-top:1px solid #e5e7eb;margin:10px 0;"></div>
+      <div style="border-top:1px solid var(--line-strong);margin:10px 0;"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:14px;font-weight:700;color:#0a1f44;">Estimated take-home</div>
-        <div style="font-size:20px;font-weight:700;color:${data.take_home >= 0 ? '#0a1f44' : '#dc2626'};">${money(data.take_home)}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy-ink);">Estimated take-home</div>
+        <div class="display" style="font-size:24px;color:${data.take_home >= 0 ? 'var(--navy-ink)' : 'var(--bad-fg)'};">${money(data.take_home)}</div>
       </div>
     </div>
-    <div style="font-size:11px;color:#9ca3af;text-align:center;padding:4px 0 12px;">Estimate only — based on jobs marked complete in Housecall Pro, Monday through Friday. Actual pay may differ.</div>
+    <div style="font-size:11px;color:var(--text-muted);text-align:center;padding:4px 0 12px;">Estimate only — based on jobs marked complete in Housecall Pro, Monday through Friday. Actual pay may differ.</div>
   `;
 }
 function materialEntryRow(entry, money) {
   const day = new Date(entry.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#374151;padding:4px 0;">
+  return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--text);padding:4px 0;">
     <div>${day}</div>
     <div style="display:flex;align-items:center;gap:10px;">
       <div>${money(Number(entry.amount))}</div>
-      <button onclick="removeMaterialEntry('${entry.id}')" title="Remove" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">✕</button>
+      <button onclick="removeMaterialEntry('${entry.id}')" title="Remove" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">✕</button>
     </div>
   </div>`;
 }
@@ -893,17 +1174,17 @@ function paymentLabel(job) {
 function dashboardJobRow(job) {
   const sm = statusMeta(job.work_status);
   return `
-    <div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+    <div style="padding:10px 0;border-bottom:1px solid var(--bg);">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div style="font-size:13px;font-weight:600;color:#0a1f44;">${job.customer_name || 'Unknown customer'}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--navy-ink);">${job.customer_name || 'Unknown customer'}</div>
         <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:${sm.bg};color:${sm.text};white-space:nowrap;">${sm.label}</span>
       </div>
-      <div style="font-size:12px;color:#9ca3af;margin-top:1px;">${job.job_type}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;font-size:12px;color:#6b7280;">
-        <span>On the way: <strong style="color:#374151;">${fmtTime(job.on_my_way_at)}</strong></span>
-        <span>Started: <strong style="color:#374151;">${fmtTime(job.started_at)}</strong></span>
-        <span>Completed: <strong style="color:#374151;">${fmtTime(job.completed_at)}</strong></span>
-        <span>Payment: <strong style="color:${job.outstanding_balance > 0 ? '#dc2626' : '#059669'};">${paymentLabel(job)}</strong></span>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:1px;">${job.job_type}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;font-size:12px;color:var(--text-muted);">
+        <span>On the way: <strong style="color:var(--text);">${fmtTime(job.on_my_way_at)}</strong></span>
+        <span>Started: <strong style="color:var(--text);">${fmtTime(job.started_at)}</strong></span>
+        <span>Completed: <strong style="color:var(--text);">${fmtTime(job.completed_at)}</strong></span>
+        <span>Payment: <strong style="color:${job.outstanding_balance > 0 ? 'var(--bad-fg)' : 'var(--ok-fg)'};">${paymentLabel(job)}</strong></span>
       </div>
     </div>
   `;
@@ -915,8 +1196,8 @@ function switchDashboardTab(tab) {
   const reportBtn = document.getElementById('dash-tab-reporting');
   const statusView = document.getElementById('dashboard-status-view');
   const reportView = document.getElementById('dashboard-reporting-view');
-  const activeStyle = 'background:#0a1f44;color:white;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;';
-  const inactiveStyle = 'background:#f4f6f9;color:#374151;border:1px solid #e5e7eb;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;';
+  const activeStyle = 'background:var(--navy-ink);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;';
+  const inactiveStyle = 'background:var(--bg);color:var(--text);border:1px solid var(--line-strong);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;';
   if (tab === 'status') {
     statusBtn.style.cssText = activeStyle;
     reportBtn.style.cssText = inactiveStyle;
@@ -977,12 +1258,12 @@ async function sendReportMessage() {
 }
 async function loadDashboard() {
   const list = document.getElementById('dashboard-list');
-  list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading dashboard...</div>';
+  list.innerHTML = '<div class="state-msg">Loading dashboard...</div>';
   try {
     const res = await fetch('/api/housecall?action=dashboard&plumber_id=' + encodeURIComponent(currentUser.id));
     const data = await res.json();
-    if (data.error) { list.innerHTML = `<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
-    if (!data.board || !data.board.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No one has jobs scheduled today.</div>'; return; }
+    if (data.error) { list.innerHTML = `<div class="state-msg error">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
+    if (!data.board || !data.board.length) { list.innerHTML = '<div class="state-msg">No one has jobs scheduled today.</div>'; return; }
     list.innerHTML = data.board.map(row => {
       let statusLine;
       if (row.current_job) {
@@ -995,24 +1276,24 @@ async function loadDashboard() {
         statusLine = 'Between jobs';
       }
       return `
-        <div style="background:white;border:1px solid #e5e7eb;border-left:4px solid ${row.running_late ? '#ef4444' : '#10b981'};border-radius:12px;padding:16px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
-            <div style="font-size:15px;font-weight:700;color:#0a1f44;">${row.plumber_name}</div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
+            <div class="display" style="font-size:22px;color:var(--text);">${row.plumber_name}</div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-              ${row.running_late ? `<span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:#fee2e2;color:#991b1b;">Running late</span>` : ''}
-              ${row.unpaid_jobs.length ? `<span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:#fef3c7;color:#92400e;">${row.unpaid_jobs.length} unpaid</span>` : ''}
+              ${row.running_late ? `<span class="chip bad">Running late</span>` : ''}
+              ${row.unpaid_jobs.length ? `<span class="chip warn">${row.unpaid_jobs.length} unpaid</span>` : ''}
             </div>
           </div>
-          <div style="font-size:13px;color:#374151;margin-bottom:4px;">${statusLine}</div>
-          <div style="font-size:12px;color:#9ca3af;">${row.jobs_completed} of ${row.jobs_today} jobs completed today</div>
-          <div style="margin-top:10px;padding-top:4px;border-top:1px solid #e5e7eb;">
+          <div style="font-size:var(--fs-body-lg);color:var(--text);margin-bottom:4px;">${statusLine}</div>
+          <div class="eyebrow" style="color:var(--text-muted);">${row.jobs_completed} of ${row.jobs_today} jobs completed today</div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
             ${row.jobs.map(dashboardJobRow).join('')}
           </div>
         </div>
       `;
     }).join('');
   } catch (err) {
-    list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading dashboard. Try refreshing.</div>';
+    list.innerHTML = '<div class="state-msg">Error loading dashboard. Try refreshing.</div>';
   }
 }
 function selectLevel(level) { currentLevel = level; showTopics(); }
@@ -1023,10 +1304,10 @@ function showTopics() {
   list.innerHTML = '';
   topics.forEach(topic => {
     const btn = document.createElement('button');
-    btn.style.cssText = 'background:white;border:1.5px solid #e5e7eb;border-radius:12px;padding:16px;cursor:pointer;text-align:left;font-size:14px;font-weight:600;color:#0a1f44;width:100%;';
+    btn.style.cssText = 'background:white;border:1.5px solid var(--line-strong);border-radius:12px;padding:16px;cursor:pointer;text-align:left;font-size:14px;font-weight:600;color:var(--navy-ink);width:100%;';
     btn.textContent = topic;
-    btn.onmouseover = () => btn.style.borderColor = '#0a1f44';
-    btn.onmouseout = () => btn.style.borderColor = '#e5e7eb';
+    btn.onmouseover = () => btn.style.borderColor = 'var(--navy-ink)';
+    btn.onmouseout = () => btn.style.borderColor = 'var(--line-strong)';
     btn.onclick = () => startQuiz(topic);
     list.appendChild(btn);
   });
@@ -1098,12 +1379,12 @@ async function showResults() {
   document.getElementById('training-results').style.display = 'flex';
   document.getElementById('results-score').textContent = `${quizScore} / ${quizQuestions.length} — ${pct}%`;
   document.getElementById('results-topic').textContent = `${currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1)} · ${currentTopic}`;
-  let emoji = '💪', message = '';
-  if (pct === 100) { emoji = '🏆'; message = 'Perfect score! Outstanding work.'; }
-  else if (pct >= 80) { emoji = '⭐'; message = 'Great job! You know your stuff.'; }
-  else if (pct >= 60) { emoji = '👍'; message = 'Good effort. Review the ones you missed and try again.'; }
-  else { emoji = '📚'; message = "Keep studying — you'll get there. Try this topic again."; }
-  document.getElementById('results-emoji').textContent = emoji;
+  let message = '';
+  if (pct === 100) { message = 'Perfect score! Outstanding work.'; }
+  else if (pct >= 80) { message = 'Great job! You know your stuff.'; }
+  else if (pct >= 60) { message = 'Good effort. Review the ones you missed and try again.'; }
+  else { message = "Keep studying — you'll get there. Try this topic again."; }
+  document.getElementById('results-emoji').innerHTML = '<svg class="icon" viewBox="0 0 24 24" width="48" height="48" style="stroke:var(--brass);"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>';
   document.getElementById('results-message').textContent = message;
   try {
     await fetch('/api/training?action=result', {
@@ -1115,41 +1396,42 @@ async function showResults() {
 }
 async function loadVehicles() {
   const grid = document.getElementById('vehicles-grid');
-  grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Loading fleet...</div>';
+  grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Loading fleet...</div>';
   try {
     const res = await fetch('/api/vehicles?action=vehicles');
     allVehicles = await res.json();
     const isAdmin = ['manager','GM','Owner'].includes(currentUser.role);
     const visible = isAdmin ? allVehicles : allVehicles.filter(v => v.name === currentUser.name);
-    if (!visible.length) { grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">No vehicle assigned. Contact your manager.</div>'; return; }
+    if (!visible.length) { grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No vehicle assigned. Contact your manager.</div>'; return; }
     grid.innerHTML = '';
     for (const v of visible) {
       const history = await fetch(`/api/vehicles?action=history&vehicle_id=${v.id}`).then(r => r.json());
       const issues = await fetch(`/api/vehicles?action=issues&vehicle_id=${v.id}`).then(r => r.json());
       const status = getFleetStatus(v, history);
-      const sc = { good: { border:'#10b981', bg:'#d1fae5', text:'#065f46', label:'Current' }, warning: { border:'#f59e0b', bg:'#fef3c7', text:'#92400e', label:'Due soon' }, overdue: { border:'#ef4444', bg:'#fee2e2', text:'#991b1b', label:'Overdue' } }[status];
+      const sc = { good: { chip:'ok', label:'Current' }, warning: { chip:'warn', label:'Due soon' }, overdue: { chip:'bad', label:'Overdue' } }[status];
       const nextDue = getNextDueService(v, history);
-      const card = document.createElement('div');
-      card.style.cssText = `background:white;border:1px solid #e5e7eb;border-left:4px solid ${sc.border};border-radius:12px;padding:16px;cursor:pointer;`;
+      const card = document.createElement('a');
+      card.href = 'javascript:void(0)';
+      card.className = 'card';
+      card.style.cssText = 'cursor:pointer;text-decoration:none;display:block;max-width:720px;';
       card.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-          <div>
-            <div style="font-size:16px;font-weight:700;color:#0a1f44;">${v.name}</div>
-            <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${v.year} ${v.make} ${v.model}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+            <div class="display" style="font-size:22px;color:var(--text);">${v.name}</div>
+            <div style="font-size:15px;color:var(--text-muted);">${v.year} ${v.make} ${v.model}</div>
           </div>
-          <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:10px;background:${sc.bg};color:${sc.text};">${sc.label}</span>
+          <span class="chip ${sc.chip}">${sc.label}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-size:14px;font-weight:600;color:#374151;">${v.current_mileage.toLocaleString()} miles</div>
-          ${issues.length > 0 ? `<span style="font-size:12px;color:#dc2626;font-weight:600;">⚠ ${issues.length} open issue${issues.length>1?'s':''}</span>` : ''}
+        <div style="font-size:16px;color:var(--text);">
+          <strong>${v.current_mileage.toLocaleString()} mi</strong>${nextDue ? ` · ${nextDue}` : ''}
         </div>
-        ${nextDue ? `<div style="margin-top:8px;font-size:12px;color:#6b7280;">Next: <span style="font-weight:600;color:${sc.border};">${nextDue}</span></div>` : ''}
+        ${issues.length > 0 ? `<div style="margin-top:6px;font-size:14px;color:var(--bad-fg);font-weight:600;">${issues.length} open issue${issues.length>1?'s':''}</div>` : ''}
       `;
       card.onclick = () => openVehicleDetail(v);
       grid.appendChild(card);
     }
   } catch(e) {
-    grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Error loading fleet.</div>';
+    grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Error loading fleet.</div>';
   }
 }
 function getFleetStatus(vehicle, history) {
@@ -1191,12 +1473,12 @@ async function openVehicleDetail(vehicle) {
     const since = vehicle.current_mileage - lastMileage;
     const milesLeft = interval - since;
     const pct = since / interval;
-    let color = '#10b981', statusText = `${milesLeft.toLocaleString()} miles until due`;
-    if (pct >= 1) { color = '#ef4444'; statusText = `${Math.abs(milesLeft).toLocaleString()} miles overdue`; }
-    else if (pct >= 0.85) color = '#f59e0b';
+    let color = 'var(--ok-fg)', statusText = `${milesLeft.toLocaleString()} miles until due`;
+    if (pct >= 1) { color = 'var(--bad-fg)'; statusText = `${Math.abs(milesLeft).toLocaleString()} miles overdue`; }
+    else if (pct >= 0.85) color = 'var(--warn-fg)';
     const row = document.createElement('div');
     row.className = 'maintenance-row';
-    row.innerHTML = `<div><div style="font-weight:500;color:#1f2937;">${service}</div><div style="font-size:11px;color:#9ca3af;">Every ${interval.toLocaleString()} miles · Last at ${lastMileage.toLocaleString()}</div></div><div style="font-size:12px;font-weight:600;color:${color};text-align:right;">${statusText}</div>`;
+    row.innerHTML = `<div><div style="font-weight:500;color:var(--text);">${service}</div><div style="font-size:11px;color:var(--text-muted);">Every ${interval.toLocaleString()} miles · Last at ${lastMileage.toLocaleString()}</div></div><div style="font-size:12px;font-weight:600;color:${color};text-align:right;">${statusText}</div>`;
     statusEl.appendChild(row);
   }
   const issuesSection = document.getElementById('open-issues-section');
@@ -1208,7 +1490,7 @@ async function openVehicleDetail(vehicle) {
       const card = document.createElement('div');
       card.className = 'issue-card';
       const date = new Date(issue.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      card.innerHTML = `<div class="issue-desc">${issue.description}</div><div class="issue-meta">Reported by ${issue.reported_by} · ${date}</div>${['manager','GM','Owner'].includes(currentUser.role) ? `<button onclick="resolveIssue('${issue.id}')" style="margin-top:8px;background:#0a1f44;color:white;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">Mark resolved</button>` : ''}`;
+      card.innerHTML = `<div class="issue-desc">${issue.description}</div><div class="issue-meta">Reported by ${issue.reported_by} · ${date}</div>${['manager','GM','Owner'].includes(currentUser.role) ? `<button onclick="resolveIssue('${issue.id}')" style="margin-top:8px;background:var(--navy-ink);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">Mark resolved</button>` : ''}`;
       issuesList.appendChild(card);
     });
   } else { issuesSection.style.display = 'none'; }
@@ -1269,7 +1551,7 @@ async function showServiceHistory() {
   document.getElementById('vehicle-history').style.display = 'flex';
   const history = await fetch(`/api/vehicles?action=history&vehicle_id=${currentVehicle.id}`).then(r => r.json());
   const list = document.getElementById('history-list');
-  if (!history.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">No service records yet.</div>'; return; }
+  if (!history.length) { list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No service records yet.</div>'; return; }
   list.innerHTML = '';
   history.forEach(h => {
     const date = new Date(h.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1309,15 +1591,24 @@ async function resolveIssue(issue_id) {
   await fetch('/api/vehicles?action=resolve_issue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ issue_id }) });
   openVehicleDetail(currentVehicle);
 }
-function switchChannel(key, el) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  el.classList.add('active');
+const MORE_SHEET_CHANNELS = ['mypay', 'dashboard', 'updates', 'vehicles'];
+function todayEyebrow() {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date()).toUpperCase().replace(/,/g, ' ·');
+}
+function switchChannel(key) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.channel === key));
+  document.querySelectorAll('.tab-item[data-channel]').forEach(n => n.classList.toggle('active', n.dataset.channel === key));
+  const moreTab = document.getElementById('tab-more');
+  if (moreTab) moreTab.classList.toggle('active', MORE_SHEET_CHANNELS.includes(key));
   document.querySelectorAll('.channel-view').forEach(v => v.classList.remove('active'));
   document.getElementById('ch-' + key).classList.add('active');
   const c = channels[key];
+  const eyebrow = key === 'myday' ? todayEyebrow() : c.tag.toUpperCase();
   document.getElementById('topbar-title').textContent = c.title;
   document.getElementById('topbar-sub').textContent = c.sub;
-  document.getElementById('topbar-tag').textContent = c.tag;
+  document.getElementById('topbar-eyebrow').textContent = eyebrow;
+  document.getElementById('appbar-title').textContent = c.title;
+  document.getElementById('appbar-eyebrow').textContent = eyebrow;
   if (key === 'myday') loadMyDay();
   if (key === 'mypay') loadMyPay();
   if (key === 'dashboard') loadDashboard();
@@ -1326,6 +1617,14 @@ function switchChannel(key, el) {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
   closeSidebar();
+}
+function openMoreSheet() {
+  document.getElementById('more-sheet').classList.add('visible');
+  document.getElementById('sheet-backdrop').classList.add('visible');
+}
+function closeMoreSheet() {
+  document.getElementById('more-sheet').classList.remove('visible');
+  document.getElementById('sheet-backdrop').classList.remove('visible');
 }
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');
