@@ -815,6 +815,10 @@ function renderMyPay(data) {
         <div>Total materials</div><div>${money(data.materials)}</div>
       </div>` : ''}
     </div>
+    ${!data.materials_entries.length ? `<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start;">
+      <div style="font-size:16px;line-height:1.3;">⚠️</div>
+      <div style="font-size:13px;color:#92400e;line-height:1.5;"><strong>No materials entered yet — this estimate is not accurate.</strong> The breakdown below assumes $0 in materials, which is almost never true. Add your receipts above as you go so the take-home number below actually means something.</div>
+    </div>` : ''}
     <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
       <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:12px;">Estimated breakdown</div>
       ${payLine('Revenue', data.revenue, money)}
