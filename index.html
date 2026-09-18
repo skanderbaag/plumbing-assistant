@@ -1199,6 +1199,10 @@ function switchChannel(key, el) {
   document.getElementById('topbar-tag').textContent = c.tag;
   if (key === 'myday') loadMyDay();
   if (key === 'dashboard') loadDashboard();
+  if (key === 'assistant') {
+    const messagesEl = document.getElementById('messages');
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
   closeSidebar();
 }
 function openSidebar() {
