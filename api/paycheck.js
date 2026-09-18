@@ -37,22 +37,30 @@ function weekBoundsLocal() {
     return { weekStart: fmt(monday), weekEnd: fmt(friday) };
 }
 
-async function getMaterials(plumberId, weekStart) {
+async function getMaterialEntries(plumberId, weekStart) {
     const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/weekly_pay_entries?plumber_id=eq.${encodeURIComponent(plumberId)}&week_start=eq.${weekStart}&select=materials`,
+        `${SUPABASE_URL}/rest/v1/materials_entries?plumber_id=eq.${encodeURIComponent(plumberId)}&week_start=eq.${weekStart}&select=id,amount,created_at&order=created_at.asc`,
         { headers: serviceHeaders() }
     );
-    if (!res.ok) return 0;
-    const data = await res.json();
-    return data[0]?.materials || 0;
+    if (!res.ok) return [];
+    return res.json();
 }
 
-async function saveMaterials(plumberId, weekStart, materials) {
-    await fetch(`${SUPABASE_URL}/rest/v1/weekly_pay_entries?on_conflict=plumber_id,week_start`, {
+async function addMaterialEntry(plumberId, weekStart, amount) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/materials_entries`, {
         method: 'POST',
-        headers: { ...serviceHeaders(), Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ plumber_id: String(plumberId), week_start: weekStart, materials, updated_at: new Date().toISOString() })
+        headers: { ...serviceHeaders(), Prefer: 'return=representation' },
+        body: JSON.stringify({ plumber_id: String(plumberId), week_start: weekStart, amount })
     });
+    const data = await res.json();
+    return data[0];
+}
+
+async function deleteMaterialEntry(plumberId, entryId) {
+    await fetch(
+        `${SUPABASE_URL}/rest/v1/materials_entries?id=eq.${encodeURIComponent(entryId)}&plumber_id=eq.${encodeURIComponent(plumberId)}`,
+        { method: 'DELETE', headers: serviceHeaders() }
+    );
 }
 
 export default async function handler(req, res) {
@@ -67,11 +75,12 @@ export default async function handler(req, res) {
             const minISO = new Date(new Date(`${weekStart}T00:00:00Z`).getTime() - 24 * 60 * 60 * 1000).toISOString();
             const maxISO = new Date(new Date(`${weekEnd}T00:00:00Z`).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString();
 
-            const [employees, jobs, materials] = await Promise.all([
+            const [employees, jobs, materialsEntries] = await Promise.all([
                 getEmployees(),
                 getJobsInRange(minISO, maxISO),
-                getMaterials(plumber_id, weekStart)
+                getMaterialEntries(plumber_id, weekStart)
             ]);
+            const materials = materialsEntries.reduce((sum, e) => sum + Number(e.amount), 0);
 
             const employee = matchEmployee(employees, plumber_name);
             const myJobs = employee ? jobsForEmployee(jobs, employee.id) : [];
@@ -94,6 +103,7 @@ export default async function handler(req, res) {
                 jobs_completed: completed.length,
                 revenue,
                 materials,
+                materials_entries: materialsEntries,
                 sales_commission_rate: SALES_COMMISSION_RATE,
                 after_sales: afterSales,
                 after_materials: afterMaterials,
@@ -105,13 +115,22 @@ export default async function handler(req, res) {
             });
         }
 
-        if (req.method === 'POST' && req.query.action === 'save_materials') {
-            const { plumber_id, materials } = req.body;
-            if (!plumber_id || typeof materials !== 'number' || !isFinite(materials) || materials < 0) {
-                return res.status(400).json({ error: 'plumber_id and a non-negative materials number are required' });
+        if (req.method === 'POST' && req.query.action === 'add_material') {
+            const { plumber_id, amount } = req.body;
+            if (!plumber_id || typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
+                return res.status(400).json({ error: 'plumber_id and a positive amount are required' });
             }
             const { weekStart } = weekBoundsLocal();
-            await saveMaterials(plumber_id, weekStart, materials);
+            const entry = await addMaterialEntry(plumber_id, weekStart, amount);
+            return res.status(200).json({ ok: true, entry });
+        }
+
+        if (req.method === 'POST' && req.query.action === 'delete_material') {
+            const { plumber_id, entry_id } = req.body;
+            if (!plumber_id || !entry_id) {
+                return res.status(400).json({ error: 'plumber_id and entry_id are required' });
+            }
+            await deleteMaterialEntry(plumber_id, entry_id);
             return res.status(200).json({ ok: true });
         }
 

@@ -801,11 +801,19 @@ function renderMyPay(data) {
       <div style="font-size:13px;color:#6b7280;margin-top:2px;">${data.jobs_completed} job${data.jobs_completed !== 1 ? 's' : ''} completed so far</div>
     </div>
     <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
-      <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:10px;">Materials / receipts spent this week</div>
-      <div style="display:flex;gap:8px;">
-        <input id="materials-input" type="number" min="0" step="0.01" value="${data.materials}" style="flex:1;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" />
-        <button onclick="saveMaterials()" style="background:#0a1f44;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
+      <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:10px;">Materials / receipts this week</div>
+      <div id="materials-list" style="display:flex;flex-direction:column;gap:2px;margin-bottom:${data.materials_entries.length ? '12px' : '4px'};">
+        ${data.materials_entries.length
+          ? data.materials_entries.map(e => materialEntryRow(e, money)).join('')
+          : '<div style="font-size:13px;color:#9ca3af;padding:4px 0 8px;">No expenses entered yet.</div>'}
       </div>
+      <div style="display:flex;gap:8px;">
+        <input id="materials-input" type="number" min="0" step="0.01" placeholder="Amount spent" style="flex:1;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" />
+        <button onclick="addMaterialEntry()" style="background:#0a1f44;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;">Add</button>
+      </div>
+      ${data.materials_entries.length ? `<div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:13px;font-weight:600;color:#0a1f44;">
+        <div>Total materials</div><div>${money(data.materials)}</div>
+      </div>` : ''}
     </div>
     <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
       <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:12px;">Estimated breakdown</div>
@@ -824,21 +832,46 @@ function renderMyPay(data) {
     <div style="font-size:11px;color:#9ca3af;text-align:center;padding:4px 0 12px;">Estimate only — based on jobs marked complete in Housecall Pro, Monday through Friday. Actual pay may differ.</div>
   `;
 }
-async function saveMaterials() {
+function materialEntryRow(entry, money) {
+  const day = new Date(entry.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#374151;padding:4px 0;">
+    <div>${day}</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div>${money(Number(entry.amount))}</div>
+      <button onclick="removeMaterialEntry('${entry.id}')" title="Remove" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;">✕</button>
+    </div>
+  </div>`;
+}
+async function addMaterialEntry() {
   const input = document.getElementById('materials-input');
   const value = parseFloat(input.value);
-  if (isNaN(value) || value < 0) { alert('Enter a valid materials amount.'); return; }
+  if (isNaN(value) || value <= 0) { alert('Enter a valid amount.'); return; }
   try {
-    const res = await fetch('/api/paycheck?action=save_materials', {
+    const res = await fetch('/api/paycheck?action=add_material', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plumber_id: currentUser.id, materials: value })
+      body: JSON.stringify({ plumber_id: currentUser.id, amount: value })
     });
     const data = await res.json();
     if (data.error) { alert('Could not save: ' + data.error); return; }
     loadMyPay();
   } catch (err) {
-    alert('Something went wrong saving materials.');
+    alert('Something went wrong saving that expense.');
+  }
+}
+async function removeMaterialEntry(entryId) {
+  if (!confirm('Remove this expense entry?')) return;
+  try {
+    const res = await fetch('/api/paycheck?action=delete_material', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plumber_id: currentUser.id, entry_id: entryId })
+    });
+    const data = await res.json();
+    if (data.error) { alert('Could not remove: ' + data.error); return; }
+    loadMyPay();
+  } catch (err) {
+    alert('Something went wrong removing that expense.');
   }
 }
 function fmtTime(iso) {
