@@ -152,6 +152,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         My day
       </div>
+      <div class="nav-item" onclick="switchChannel('mypay', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        My pay
+      </div>
       <div class="nav-item" id="nav-dashboard" onclick="switchChannel('dashboard', this)" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
         Dashboard
@@ -223,6 +227,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #
       </div>
       <div id="myday-list" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;">
         <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading today's jobs...</div>
+      </div>
+    </div>
+    <!-- MY PAY -->
+    <div class="channel-view" id="ch-mypay">
+      <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;background:white;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <div style="font-size:13px;color:#6b7280;">Estimated take-home for this week, based on completed jobs</div>
+        <button onclick="loadMyPay()" style="background:#f4f6f9;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:#374151;">Refresh</button>
+      </div>
+      <div id="mypay-content" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;">
+        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading this week's jobs...</div>
       </div>
     </div>
     <!-- DASHBOARD -->
@@ -437,6 +451,7 @@ const MAINTENANCE_INTERVALS = {
 const channels = {
   assistant: { title: 'Assistant', sub: 'Ask anything — code, materials, best practices', tag: 'Ohio · IPC' },
   myday: { title: 'My day', sub: "Today's jobs, pulled live from Housecall Pro", tag: 'Schedule' },
+  mypay: { title: 'My pay', sub: 'Estimated take-home for this week', tag: 'Pay' },
   dashboard: { title: 'Team dashboard', sub: "Where everyone's at, right now", tag: 'Live' },
   training: { title: 'Training', sub: 'Study guides and knowledge quizzes', tag: 'Knowledge' },
   updates: { title: 'Shop updates', sub: 'Latest from the team', tag: 'Bulletin' },
@@ -757,6 +772,75 @@ async function loadMyDay() {
     list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Error loading your schedule. Try refreshing.</div>';
   }
 }
+async function loadMyPay() {
+  const el = document.getElementById('mypay-content');
+  el.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading this week\'s jobs...</div>';
+  try {
+    const res = await fetch(`/api/paycheck?action=summary&plumber_id=${encodeURIComponent(currentUser.id)}&plumber_name=${encodeURIComponent(currentUser.name)}`);
+    const data = await res.json();
+    if (data.error) { el.innerHTML = `<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Couldn't load: ${data.error}</div>`; return; }
+    renderMyPay(data);
+  } catch (err) {
+    el.innerHTML = '<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Something went wrong loading your pay estimate. Try refreshing.</div>';
+  }
+}
+function payLine(label, amount, money, emphasize = false) {
+  const sign = amount < 0 ? '−' : '';
+  return `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:${emphasize ? '#0a1f44' : '#6b7280'};font-weight:${emphasize ? '600' : '400'};">
+    <div>${label}</div><div>${sign}${money(Math.abs(amount))}</div>
+  </div>`;
+}
+function renderMyPay(data) {
+  const el = document.getElementById('mypay-content');
+  const money = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dateRange = `${new Date(data.week_start + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(data.week_end + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  el.innerHTML = `
+    <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
+      <div style="font-size:12px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">This week (${dateRange})</div>
+      <div style="font-size:28px;font-weight:700;color:#0a1f44;">${money(data.revenue)}</div>
+      <div style="font-size:13px;color:#6b7280;margin-top:2px;">${data.jobs_completed} job${data.jobs_completed !== 1 ? 's' : ''} completed so far</div>
+    </div>
+    <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
+      <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:10px;">Materials / receipts spent this week</div>
+      <div style="display:flex;gap:8px;">
+        <input id="materials-input" type="number" min="0" step="0.01" value="${data.materials}" style="flex:1;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;" />
+        <button onclick="saveMaterials()" style="background:#0a1f44;color:white;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;">Save</button>
+      </div>
+    </div>
+    <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:18px;">
+      <div style="font-size:13px;font-weight:600;color:#0a1f44;margin-bottom:12px;">Estimated breakdown</div>
+      ${payLine('Revenue', data.revenue, money)}
+      ${payLine(`Sales commission (${Math.round(data.sales_commission_rate * 100)}%)`, -(data.revenue - data.after_sales), money)}
+      ${payLine('Materials', -data.materials, money)}
+      ${payLine(`Your commission (${Math.round(data.commission_rate * 100)}%)`, data.commission_amount, money, true)}
+      ${payLine('Vehicle', -data.vehicle_fee, money)}
+      ${payLine('Tool account', -data.tool_fee, money)}
+      <div style="border-top:1px solid #e5e7eb;margin:10px 0;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:14px;font-weight:700;color:#0a1f44;">Estimated take-home</div>
+        <div style="font-size:20px;font-weight:700;color:${data.take_home >= 0 ? '#0a1f44' : '#dc2626'};">${money(data.take_home)}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#9ca3af;text-align:center;padding:4px 0 12px;">Estimate only — based on jobs marked complete in Housecall Pro, Monday through Friday. Actual pay may differ.</div>
+  `;
+}
+async function saveMaterials() {
+  const input = document.getElementById('materials-input');
+  const value = parseFloat(input.value);
+  if (isNaN(value) || value < 0) { alert('Enter a valid materials amount.'); return; }
+  try {
+    const res = await fetch('/api/paycheck?action=save_materials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plumber_id: currentUser.id, materials: value })
+    });
+    const data = await res.json();
+    if (data.error) { alert('Could not save: ' + data.error); return; }
+    loadMyPay();
+  } catch (err) {
+    alert('Something went wrong saving materials.');
+  }
+}
 function fmtTime(iso) {
   return iso ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—';
 }
@@ -842,7 +926,7 @@ async function sendReportMessage() {
     const response = await fetch('/api/reports-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: reportConversationHistory })
+      body: JSON.stringify({ messages: reportConversationHistory, plumber_id: currentUser.id })
     });
     const data = await response.json();
     if (data.error) { loadingEl.querySelector('.bubble').textContent = 'Error: ' + data.error; return; }
@@ -858,7 +942,7 @@ async function loadDashboard() {
   const list = document.getElementById('dashboard-list');
   list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">Loading dashboard...</div>';
   try {
-    const res = await fetch('/api/housecall?action=dashboard');
+    const res = await fetch('/api/housecall?action=dashboard&plumber_id=' + encodeURIComponent(currentUser.id));
     const data = await res.json();
     if (data.error) { list.innerHTML = `<div style="text-align:center;color:#dc2626;font-size:13px;padding:40px 0;">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
     if (!data.board || !data.board.length) { list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px 0;">No one has jobs scheduled today.</div>'; return; }
@@ -1198,6 +1282,7 @@ function switchChannel(key, el) {
   document.getElementById('topbar-sub').textContent = c.sub;
   document.getElementById('topbar-tag').textContent = c.tag;
   if (key === 'myday') loadMyDay();
+  if (key === 'mypay') loadMyPay();
   if (key === 'dashboard') loadDashboard();
   if (key === 'assistant') {
     const messagesEl = document.getElementById('messages');

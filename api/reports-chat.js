@@ -1,4 +1,5 @@
 import { buildRecallReport } from '../lib/reports.js';
+import { getPlumberRole, isManagerRole } from '../lib/auth.js';
 
 const TOOLS = [
     {
@@ -27,7 +28,11 @@ async function runTool(name, input) {
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
 
-    const { messages } = req.body;
+    const { messages, plumber_id } = req.body;
+    const role = await getPlumberRole(plumber_id);
+    if (!isManagerRole(role)) {
+        return res.status(403).json({ error: 'You don\'t have access to reporting.' });
+    }
     const today = new Date().toISOString().slice(0, 10);
 
     try {
