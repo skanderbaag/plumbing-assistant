@@ -884,10 +884,10 @@ async function loadTools() {
       const card = document.createElement('button');
       card.className = 'card';
       card.setAttribute('aria-pressed', isOut ? 'true' : 'false');
-      card.style.cssText = 'cursor:pointer;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%;';
+      card.style.cssText = 'cursor:pointer;display:block;text-align:left;width:100%;';
       card.innerHTML = `
         <div class="display" style="font-size:20px;color:var(--text);line-height:1.15;">${tool.name}</div>
-        <span class="chip ${isOut ? 'bad' : 'ok'}" style="align-self:flex-start;">${isOut ? 'Checked out · ' + tool.checked_out_by : 'Available'}</span>
+        <span class="chip ${isOut ? 'bad' : 'ok'}" style="margin-top:8px;">${isOut ? 'Checked out · ' + tool.checked_out_by : 'Available'}</span>
       `;
       card.onclick = () => handleToolTap(tool);
       grid.appendChild(card);
