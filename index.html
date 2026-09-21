@@ -469,16 +469,16 @@ table.ref-table td { padding: 12px 14px; border-top: 1px solid var(--line); }
           </div>
           <div class="eyebrow" style="color:var(--text-muted);">Select your level</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <button onclick="selectLevel('apprentice')" class="card" style="cursor:pointer;text-align:center;">
+            <div onclick="selectLevel('apprentice')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLevel('apprentice');}" role="button" tabindex="0" class="card" style="cursor:pointer;text-align:center;">
               <svg class="icon" viewBox="0 0 24 24" width="32" height="32" style="stroke:var(--brass);margin:0 auto 8px;"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
               <div class="display" style="font-size:24px;color:var(--text);">Apprentice</div>
               <div style="font-size:var(--fs-body);color:var(--text-muted);margin-top:4px;">Tools, materials, terminology</div>
-            </button>
-            <button onclick="selectLevel('journeyman')" class="card" style="cursor:pointer;text-align:center;">
+            </div>
+            <div onclick="selectLevel('journeyman')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectLevel('journeyman');}" role="button" tabindex="0" class="card" style="cursor:pointer;text-align:center;">
               <svg class="icon" viewBox="0 0 24 24" width="32" height="32" style="stroke:var(--brass);margin:0 auto 8px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
               <div class="display" style="font-size:24px;color:var(--text);">Journeyman</div>
               <div style="font-size:var(--fs-body);color:var(--text-muted);margin-top:4px;">Code, fixtures, advanced skills</div>
-            </button>
+            </div>
           </div>
         </div>
         <div id="training-topics" style="padding:20px;display:none;flex-direction:column;gap:12px;">
@@ -881,15 +881,18 @@ async function loadTools() {
         grid.appendChild(label);
       }
       const isOut = !!tool.checked_out_by;
-      const card = document.createElement('button');
+      const card = document.createElement('div');
       card.className = 'card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
       card.setAttribute('aria-pressed', isOut ? 'true' : 'false');
-      card.style.cssText = 'cursor:pointer;display:block;text-align:left;width:100%;';
+      card.style.cssText = 'cursor:pointer;text-align:left;width:100%;height:auto;';
       card.innerHTML = `
         <div class="display" style="font-size:20px;color:var(--text);line-height:1.15;">${tool.name}</div>
         <span class="chip ${isOut ? 'bad' : 'ok'}" style="margin-top:8px;">${isOut ? 'Checked out · ' + tool.checked_out_by : 'Available'}</span>
       `;
       card.onclick = () => handleToolTap(tool);
+      card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToolTap(tool); } };
       grid.appendChild(card);
     });
   } catch(err) {
