@@ -1,17 +1,11 @@
-export default async function handler(req, res) {
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
-    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+import { dbFetch } from '../lib/db.js';
 
-    const headers = {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-    };
+export default async function handler(req, res) {
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
     if (req.method === 'GET' && req.query.action === 'tip') {
         const today = new Date().toISOString().split('T')[0];
-        const existing = await fetch(`${SUPABASE_URL}/rest/v1/training_tips?tip_date=eq.${today}&select=*`, { headers });
+        const existing = await dbFetch(`training_tips?tip_date=eq.${today}&select=*`);
         const existingData = await existing.json();
         if (existingData.length > 0) return res.status(200).json({ tip: existingData[0].tip });
 
@@ -26,9 +20,9 @@ export default async function handler(req, res) {
         });
         const aiData = await aiRes.json();
         const tip = aiData.content[0].text;
-        await fetch(`${SUPABASE_URL}/rest/v1/training_tips`, {
+        await dbFetch('training_tips', {
             method: 'POST',
-            headers: { ...headers, 'Prefer': 'return=representation' },
+            headers: { 'Prefer': 'return=representation' },
             body: JSON.stringify({ tip, tip_date: today })
         });
         return res.status(200).json({ tip });
@@ -36,10 +30,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET' && req.query.action === 'questions') {
         const { level, topic } = req.query;
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/quiz_questions?level=eq.${level}&topic=eq.${encodeURIComponent(topic)}&select=*`,
-            { headers }
-        );
+        const response = await dbFetch(`quiz_questions?level=eq.${level}&topic=eq.${encodeURIComponent(topic)}&select=*`);
         const data = await response.json();
         const shuffled = data.sort(() => Math.random() - 0.5).slice(0, 10);
         return res.status(200).json(shuffled);
@@ -47,9 +38,9 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST' && req.query.action === 'result') {
         const { plumber_id, level, topic, score, total } = req.body;
-        await fetch(`${SUPABASE_URL}/rest/v1/quiz_results`, {
+        await dbFetch('quiz_results', {
             method: 'POST',
-            headers: { ...headers, 'Prefer': 'return=representation' },
+            headers: { 'Prefer': 'return=representation' },
             body: JSON.stringify({ plumber_id, level, topic, score, total })
         });
         return res.status(200).json({ success: true });

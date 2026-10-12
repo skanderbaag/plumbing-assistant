@@ -1,15 +1,5 @@
 import { getEmployees, getJobsInRange, matchEmployee, jobsForEmployee, simplifyJob } from '../lib/housecall.js';
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function serviceHeaders() {
-    return {
-        'Content-Type': 'application/json',
-        'apikey': SERVICE_KEY,
-        'Authorization': `Bearer ${SERVICE_KEY}`
-    };
-}
+import { dbFetch } from '../lib/db.js';
 
 // Company pay structure: 10% off the top goes to whoever sold the job (almost never the
 // installing plumber), materials are subtracted from what's left, then the plumber gets a
@@ -38,18 +28,17 @@ function weekBoundsLocal() {
 }
 
 async function getMaterialEntries(plumberId, weekStart) {
-    const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/materials_entries?plumber_id=eq.${encodeURIComponent(plumberId)}&week_start=eq.${weekStart}&select=id,amount,created_at&order=created_at.asc`,
-        { headers: serviceHeaders() }
+    const res = await dbFetch(
+        `materials_entries?plumber_id=eq.${encodeURIComponent(plumberId)}&week_start=eq.${weekStart}&select=id,amount,created_at&order=created_at.asc`
     );
     if (!res.ok) return [];
     return res.json();
 }
 
 async function addMaterialEntry(plumberId, weekStart, amount) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/materials_entries`, {
+    const res = await dbFetch('materials_entries', {
         method: 'POST',
-        headers: { ...serviceHeaders(), Prefer: 'return=representation' },
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify({ plumber_id: String(plumberId), week_start: weekStart, amount })
     });
     const data = await res.json();
@@ -57,9 +46,9 @@ async function addMaterialEntry(plumberId, weekStart, amount) {
 }
 
 async function deleteMaterialEntry(plumberId, entryId) {
-    await fetch(
-        `${SUPABASE_URL}/rest/v1/materials_entries?id=eq.${encodeURIComponent(entryId)}&plumber_id=eq.${encodeURIComponent(plumberId)}`,
-        { method: 'DELETE', headers: serviceHeaders() }
+    await dbFetch(
+        `materials_entries?id=eq.${encodeURIComponent(entryId)}&plumber_id=eq.${encodeURIComponent(plumberId)}`,
+        { method: 'DELETE' }
     );
 }
 
