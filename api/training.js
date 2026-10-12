@@ -1,7 +1,10 @@
 import { dbFetch } from '../lib/db.js';
+import { requireUser } from '../lib/auth.js';
 
 export default async function handler(req, res) {
     const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    const user = await requireUser(req, res);
+    if (!user) return;
 
     if (req.method === 'GET' && req.query.action === 'tip') {
         const today = new Date().toISOString().split('T')[0];
@@ -37,11 +40,11 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST' && req.query.action === 'result') {
-        const { plumber_id, level, topic, score, total } = req.body;
+        const { level, topic, score, total } = req.body;
         await dbFetch('quiz_results', {
             method: 'POST',
             headers: { 'Prefer': 'return=representation' },
-            body: JSON.stringify({ plumber_id, level, topic, score, total })
+            body: JSON.stringify({ plumber_id: user.id, level, topic, score, total })
         });
         return res.status(200).json({ success: true });
     }

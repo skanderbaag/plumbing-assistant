@@ -1,5 +1,6 @@
 import { getEmployees, getJobsInRange, matchEmployee, jobsForEmployee, simplifyJob } from '../lib/housecall.js';
 import { dbFetch } from '../lib/db.js';
+import { requireUser } from '../lib/auth.js';
 
 // Company pay structure: 10% off the top goes to whoever sold the job (almost never the
 // installing plumber), materials are subtracted from what's left, then the plumber gets a
@@ -54,9 +55,12 @@ async function deleteMaterialEntry(plumberId, entryId) {
 
 export default async function handler(req, res) {
     try {
+        const user = await requireUser(req, res);
+        if (!user) return;
+        const plumber_id = user.id;
+        const plumber_name = user.name;
+
         if (req.method === 'GET' && req.query.action === 'summary') {
-            const { plumber_id, plumber_name } = req.query;
-            if (!plumber_id || !plumber_name) return res.status(400).json({ error: 'plumber_id and plumber_name are required' });
 
             const { weekStart, weekEnd } = weekBoundsLocal();
             // Wide buffer around the week to safely absorb the UTC/Eastern offset, then we
@@ -105,9 +109,9 @@ export default async function handler(req, res) {
         }
 
         if (req.method === 'POST' && req.query.action === 'add_material') {
-            const { plumber_id, amount } = req.body;
-            if (!plumber_id || typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
-                return res.status(400).json({ error: 'plumber_id and a positive amount are required' });
+            const { amount } = req.body;
+            if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
+                return res.status(400).json({ error: 'A positive amount is required' });
             }
             const { weekStart } = weekBoundsLocal();
             const entry = await addMaterialEntry(plumber_id, weekStart, amount);
@@ -115,9 +119,9 @@ export default async function handler(req, res) {
         }
 
         if (req.method === 'POST' && req.query.action === 'delete_material') {
-            const { plumber_id, entry_id } = req.body;
-            if (!plumber_id || !entry_id) {
-                return res.status(400).json({ error: 'plumber_id and entry_id are required' });
+            const { entry_id } = req.body;
+            if (!entry_id) {
+                return res.status(400).json({ error: 'entry_id is required' });
             }
             await deleteMaterialEntry(plumber_id, entry_id);
             return res.status(200).json({ ok: true });

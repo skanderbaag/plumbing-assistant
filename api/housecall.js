@@ -1,5 +1,5 @@
 import { getEmployees, getTodaysJobs, getLineItems, getInvoiceInfo, matchEmployee, jobsForEmployee, simplifyJob } from '../lib/housecall.js';
-import { getPlumberRole, isManagerRole } from '../lib/auth.js';
+import { requireUser, requireAdmin } from '../lib/auth.js';
 
 // A scheduled job counts as "running late" if its arrival window has fully elapsed
 // and the tech hasn't marked "on my way" or started it yet. Adjust the grace logic
@@ -17,8 +17,9 @@ export default async function handler(req, res) {
 
     try {
         if (action === 'my_day') {
-            const { plumber_name } = req.query;
-            if (!plumber_name) return res.status(400).json({ error: 'plumber_name is required' });
+            const user = await requireUser(req, res);
+            if (!user) return;
+            const plumber_name = user.name;
 
             const [employees, jobs] = await Promise.all([getEmployees(), getTodaysJobs()]);
             const employee = matchEmployee(employees, plumber_name);
@@ -45,11 +46,8 @@ export default async function handler(req, res) {
         }
 
         if (action === 'dashboard') {
-            const { plumber_id } = req.query;
-            const role = await getPlumberRole(plumber_id);
-            if (!isManagerRole(role)) {
-                return res.status(403).json({ error: 'You don\'t have access to the team dashboard.' });
-            }
+            const admin = await requireAdmin(req, res);
+            if (!admin) return;
 
             const [employees, jobs] = await Promise.all([getEmployees(), getTodaysJobs()]);
             const now = new Date();

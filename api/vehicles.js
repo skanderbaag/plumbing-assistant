@@ -1,6 +1,10 @@
 import { dbFetch } from '../lib/db.js';
+import { requireUser } from '../lib/auth.js';
 
 export default async function handler(req, res) {
+    const user = await requireUser(req, res);
+    if (!user) return;
+
     if (req.method === 'GET' && req.query.action === 'vehicles') {
         const response = await dbFetch('vehicles?select=*&order=name');
         const data = await response.json();
@@ -35,7 +39,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST' && req.query.action === 'log_service') {
-        const { vehicle_id, service_type, mileage_at_service, notes, logged_by } = req.body;
+        const { vehicle_id, service_type, mileage_at_service, notes } = req.body;
+        const logged_by = user.name;
         await dbFetch('vehicle_service_log', {
             method: 'POST',
             headers: { 'Prefer': 'return=representation' },
@@ -50,7 +55,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST' && req.query.action === 'report_issue') {
-        const { vehicle_id, description, reported_by } = req.body;
+        const { vehicle_id, description } = req.body;
+        const reported_by = user.name;
         await dbFetch('vehicle_issues', {
             method: 'POST',
             headers: { 'Prefer': 'return=representation' },
@@ -60,6 +66,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST' && req.query.action === 'resolve_issue') {
+        if (!user.is_admin) return res.status(403).json({ error: 'Not allowed.' });
         const { issue_id } = req.body;
         await dbFetch(`vehicle_issues?id=eq.${issue_id}`, {
             method: 'PATCH',

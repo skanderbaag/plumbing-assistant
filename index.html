@@ -624,6 +624,24 @@ const SUPABASE_URL = 'https://dnhcnbloghupybdezuas.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_re8LvhneKPYR-gObFoNUeQ_3NjeoxMY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
+const TOKEN_KEY = 'lp_token';
+function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
+function setToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+// Every call to our own server goes through here so the login token rides along. If the server
+// says the token is no longer good (expired, or the account was removed), send them to login.
+async function apiFetch(url, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  const token = getToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401 && currentUser) {
+    doLogout();
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = 'Your session ended. Please log in again.';
+    errEl.style.display = 'block';
+  }
+  return res;
+}
 let conversationHistory = [];
 let currentLevel = '';
 let currentTopic = '';
@@ -678,6 +696,11 @@ async function doLogin() {
   });
   const data = res.ok ? await res.json() : null;
   if (!data) { errEl.textContent = 'Incorrect PIN. Try again.'; errEl.style.display = 'block'; return; }
+  setToken(data.token);
+  delete data.token;
+  startSession(data);
+}
+function startSession(data) {
   currentUser = data;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-shell').style.display = 'flex';
@@ -694,13 +717,14 @@ async function doLogin() {
   loadTip();
   loadMyDay();
   document.getElementById('appbar-eyebrow').textContent = todayEyebrow();
-  if (['manager','GM','Owner'].includes(data.role)) {
+  if (data.is_admin) {
     document.getElementById('post-form-area').style.display = 'block';
     document.getElementById('nav-dashboard').style.display = 'flex';
   }
   addMessage('Hey ' + data.name + '! What can I help you with today? Ask me anything about code, materials, fittings, or best practices. You can also tap the camera icon to send a photo of what you\'re working on.', 'ai');
 }
 function doLogout() {
+  setToken(null);
   currentUser = null;
   conversationHistory = [];
   pendingImageBase64 = null;
@@ -772,10 +796,10 @@ async function sendMessage() {
   saveMessage('user', text, imageUrl);
   const loadingEl = addMessage('Thinking...', 'ai');
   try {
-    const response = await fetch('/api/chat', {
+    const response = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: conversationHistory, plumber_name: currentUser.name })
+      body: JSON.stringify({ messages: conversationHistory })
     });
     const data = await response.json();
     if (data.error) { loadingEl.querySelector('.bubble').textContent = 'Error: ' + data.error; return; }
@@ -866,7 +890,7 @@ async function loadTools() {
   const grid = document.getElementById('tools-grid');
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:40px 0;">Loading tools...</div>';
   try {
-    const response = await fetch('/api/tools');
+    const response = await apiFetch('/api/tools');
     const tools = await response.json();
     if (!tools.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:13px;padding:40px 0;">No tools found.</div>'; return; }
     let currentCategory = '';
@@ -904,16 +928,16 @@ async function handleToolTap(tool) {
   if (isOut) {
     if (tool.checked_out_by !== currentUser.name) { alert(`This tool is checked out by ${tool.checked_out_by}. Only they can return it.`); return; }
     if (!confirm(`Return "${tool.name}"?`)) return;
-    await fetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: tool.id, action: 'return' }) });
+    await apiFetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: tool.id, action: 'return' }) });
   } else {
     if (!confirm(`Check out "${tool.name}"?`)) return;
-    await fetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: tool.id, action: 'checkout', plumber_name: currentUser.name }) });
+    await apiFetch('/api/tools', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: tool.id, action: 'checkout' }) });
   }
   loadTools();
 }
 async function loadTip() {
   try {
-    const res = await fetch('/api/training?action=tip');
+    const res = await apiFetch('/api/training?action=tip');
     const data = await res.json();
     document.getElementById('tip-text').textContent = data.tip;
   } catch(e) {
@@ -981,7 +1005,7 @@ async function loadMyDay() {
   const list = document.getElementById('myday-list');
   list.innerHTML = '<div class="state-msg">Loading today\'s jobs...</div>';
   try {
-    const res = await fetch(`/api/housecall?action=my_day&plumber_name=${encodeURIComponent(currentUser.name)}`);
+    const res = await apiFetch('/api/housecall?action=my_day');
     const data = await res.json();
     if (data.error) { list.innerHTML = `<div class="state-msg error">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
     if (data.warning) { list.innerHTML = `<div class="state-msg">${data.warning}</div>`; return; }
@@ -995,7 +1019,7 @@ async function loadMyPay() {
   const el = document.getElementById('mypay-content');
   el.innerHTML = '<div class="state-msg">Loading this week\'s jobs...</div>';
   try {
-    const res = await fetch(`/api/paycheck?action=summary&plumber_id=${encodeURIComponent(currentUser.id)}&plumber_name=${encodeURIComponent(currentUser.name)}`);
+    const res = await apiFetch('/api/paycheck?action=summary');
     const data = await res.json();
     if (data.error) { el.innerHTML = `<div class="state-msg error">Couldn't load: ${data.error}</div>`; return; }
     renderMyPay(data);
@@ -1070,10 +1094,10 @@ async function addMaterialEntry() {
   const value = parseFloat(input.value);
   if (isNaN(value) || value <= 0) { alert('Enter a valid amount.'); return; }
   try {
-    const res = await fetch('/api/paycheck?action=add_material', {
+    const res = await apiFetch('/api/paycheck?action=add_material', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plumber_id: currentUser.id, amount: value })
+      body: JSON.stringify({ amount: value })
     });
     const data = await res.json();
     if (data.error) { alert('Could not save: ' + data.error); return; }
@@ -1085,10 +1109,10 @@ async function addMaterialEntry() {
 async function removeMaterialEntry(entryId) {
   if (!confirm('Remove this expense entry?')) return;
   try {
-    const res = await fetch('/api/paycheck?action=delete_material', {
+    const res = await apiFetch('/api/paycheck?action=delete_material', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plumber_id: currentUser.id, entry_id: entryId })
+      body: JSON.stringify({ entry_id: entryId })
     });
     const data = await res.json();
     if (data.error) { alert('Could not remove: ' + data.error); return; }
@@ -1179,10 +1203,10 @@ async function sendReportMessage() {
   reportConversationHistory.push({ role: 'user', content: text });
   const loadingEl = addReportMessage('Pulling that report — this can take a few seconds since it scans the full job history...', 'ai');
   try {
-    const response = await fetch('/api/reports-chat', {
+    const response = await apiFetch('/api/reports-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: reportConversationHistory, plumber_id: currentUser.id })
+      body: JSON.stringify({ messages: reportConversationHistory })
     });
     const data = await response.json();
     if (data.error) { loadingEl.querySelector('.bubble').textContent = 'Error: ' + data.error; return; }
@@ -1198,7 +1222,7 @@ async function loadDashboard() {
   const list = document.getElementById('dashboard-list');
   list.innerHTML = '<div class="state-msg">Loading dashboard...</div>';
   try {
-    const res = await fetch('/api/housecall?action=dashboard&plumber_id=' + encodeURIComponent(currentUser.id));
+    const res = await apiFetch('/api/housecall?action=dashboard');
     const data = await res.json();
     if (data.error) { list.innerHTML = `<div class="state-msg error">Couldn't load Housecall Pro: ${data.error}</div>`; return; }
     if (!data.board || !data.board.length) { list.innerHTML = '<div class="state-msg">No one has jobs scheduled today.</div>'; return; }
@@ -1267,7 +1291,7 @@ async function startQuiz(topic) {
   document.getElementById('training-topics').style.display = 'none';
   document.getElementById('training-quiz').style.display = 'flex';
   try {
-    const res = await fetch(`/api/training?action=questions&level=${currentLevel}&topic=${encodeURIComponent(topic)}`);
+    const res = await apiFetch(`/api/training?action=questions&level=${currentLevel}&topic=${encodeURIComponent(topic)}`);
     quizQuestions = await res.json();
     if (!quizQuestions.length) { alert('No questions found for this topic yet.'); showTopics(); return; }
     showQuestion();
@@ -1325,10 +1349,10 @@ async function showResults() {
   document.getElementById('results-emoji').innerHTML = '<svg class="icon" viewBox="0 0 24 24" width="48" height="48" style="stroke:var(--brass);"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>';
   document.getElementById('results-message').textContent = message;
   try {
-    await fetch('/api/training?action=result', {
+    await apiFetch('/api/training?action=result', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plumber_id: currentUser.id, level: currentLevel, topic: currentTopic, score: quizScore, total: quizQuestions.length })
+      body: JSON.stringify({ level: currentLevel, topic: currentTopic, score: quizScore, total: quizQuestions.length })
     });
   } catch(e) {}
 }
@@ -1336,15 +1360,15 @@ async function loadVehicles() {
   const grid = document.getElementById('vehicles-grid');
   grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">Loading fleet...</div>';
   try {
-    const res = await fetch('/api/vehicles?action=vehicles');
+    const res = await apiFetch('/api/vehicles?action=vehicles');
     allVehicles = await res.json();
-    const isAdmin = ['manager','GM','Owner'].includes(currentUser.role);
+    const isAdmin = currentUser.is_admin;
     const visible = isAdmin ? allVehicles : allVehicles.filter(v => v.name === currentUser.name);
     if (!visible.length) { grid.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No vehicle assigned. Contact your manager.</div>'; return; }
     grid.innerHTML = '';
     for (const v of visible) {
-      const history = await fetch(`/api/vehicles?action=history&vehicle_id=${v.id}`).then(r => r.json());
-      const issues = await fetch(`/api/vehicles?action=issues&vehicle_id=${v.id}`).then(r => r.json());
+      const history = await apiFetch(`/api/vehicles?action=history&vehicle_id=${v.id}`).then(r => r.json());
+      const issues = await apiFetch(`/api/vehicles?action=issues&vehicle_id=${v.id}`).then(r => r.json());
       const status = getFleetStatus(v, history);
       const sc = { good: { chip:'ok', label:'Current' }, warning: { chip:'warn', label:'Due soon' }, overdue: { chip:'bad', label:'Overdue' } }[status];
       const nextDue = getNextDueService(v, history);
@@ -1401,8 +1425,8 @@ async function openVehicleDetail(vehicle) {
   document.getElementById('detail-truck-name').textContent = vehicle.name;
   document.getElementById('detail-truck-info').textContent = `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
   document.getElementById('detail-mileage').textContent = vehicle.current_mileage.toLocaleString() + ' miles';
-  const history = await fetch(`/api/vehicles?action=history&vehicle_id=${vehicle.id}`).then(r => r.json());
-  const issues = await fetch(`/api/vehicles?action=issues&vehicle_id=${vehicle.id}`).then(r => r.json());
+  const history = await apiFetch(`/api/vehicles?action=history&vehicle_id=${vehicle.id}`).then(r => r.json());
+  const issues = await apiFetch(`/api/vehicles?action=issues&vehicle_id=${vehicle.id}`).then(r => r.json());
   const statusEl = document.getElementById('maintenance-status');
   statusEl.innerHTML = '';
   for (const [service, interval] of Object.entries(MAINTENANCE_INTERVALS)) {
@@ -1428,7 +1452,7 @@ async function openVehicleDetail(vehicle) {
       const card = document.createElement('div');
       card.className = 'issue-card';
       const date = new Date(issue.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      card.innerHTML = `<div class="issue-desc">${issue.description}</div><div class="issue-meta">Reported by ${issue.reported_by} · ${date}</div>${['manager','GM','Owner'].includes(currentUser.role) ? `<button onclick="resolveIssue('${issue.id}')" style="margin-top:8px;background:var(--navy-ink);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">Mark resolved</button>` : ''}`;
+      card.innerHTML = `<div class="issue-desc">${issue.description}</div><div class="issue-meta">Reported by ${issue.reported_by} · ${date}</div>${currentUser.is_admin ? `<button onclick="resolveIssue('${issue.id}')" style="margin-top:8px;background:var(--navy-ink);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;">Mark resolved</button>` : ''}`;
       issuesList.appendChild(card);
     });
   } else { issuesSection.style.display = 'none'; }
@@ -1487,7 +1511,7 @@ async function showServiceHistory() {
   document.getElementById('vehicle-service-form').style.display = 'none';
   document.getElementById('vehicle-issue-form').style.display = 'none';
   document.getElementById('vehicle-history').style.display = 'flex';
-  const history = await fetch(`/api/vehicles?action=history&vehicle_id=${currentVehicle.id}`).then(r => r.json());
+  const history = await apiFetch(`/api/vehicles?action=history&vehicle_id=${currentVehicle.id}`).then(r => r.json());
   const list = document.getElementById('history-list');
   if (!history.length) { list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No service records yet.</div>'; return; }
   list.innerHTML = '';
@@ -1502,7 +1526,7 @@ async function showServiceHistory() {
 async function submitMileageUpdate() {
   const mileage = parseInt(document.getElementById('new-mileage-input').value);
   if (!mileage || mileage < currentVehicle.current_mileage) { alert('Please enter a valid mileage higher than the current reading.'); return; }
-  await fetch('/api/vehicles?action=update_mileage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vehicle_id: currentVehicle.id, mileage }) });
+  await apiFetch('/api/vehicles?action=update_mileage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vehicle_id: currentVehicle.id, mileage }) });
   currentVehicle.current_mileage = mileage;
   alert('Mileage updated!');
   openVehicleDetail(currentVehicle);
@@ -1512,7 +1536,7 @@ async function submitServiceLog() {
   const mileage_at_service = parseInt(document.getElementById('service-mileage-input').value);
   const notes = document.getElementById('service-notes-input').value.trim();
   if (!service_type || !mileage_at_service) { alert('Please select a service type and enter the mileage.'); return; }
-  await fetch('/api/vehicles?action=log_service', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vehicle_id: currentVehicle.id, service_type, mileage_at_service, notes, logged_by: currentUser.name }) });
+  await apiFetch('/api/vehicles?action=log_service', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vehicle_id: currentVehicle.id, service_type, mileage_at_service, notes }) });
   currentVehicle.current_mileage = mileage_at_service;
   alert('Service logged!');
   openVehicleDetail(currentVehicle);
@@ -1520,13 +1544,13 @@ async function submitServiceLog() {
 async function submitIssueReport() {
   const description = document.getElementById('issue-description-input').value.trim();
   if (!description) { alert('Please describe the issue.'); return; }
-  await fetch('/api/vehicles?action=report_issue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vehicle_id: currentVehicle.id, description, reported_by: currentUser.name }) });
+  await apiFetch('/api/vehicles?action=report_issue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vehicle_id: currentVehicle.id, description }) });
   alert('Issue reported!');
   openVehicleDetail(currentVehicle);
 }
 async function resolveIssue(issue_id) {
   if (!confirm('Mark this issue as resolved?')) return;
-  await fetch('/api/vehicles?action=resolve_issue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ issue_id }) });
+  await apiFetch('/api/vehicles?action=resolve_issue', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ issue_id }) });
   openVehicleDetail(currentVehicle);
 }
 function todayEyebrow() {
@@ -1575,7 +1599,18 @@ document.getElementById('report-input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
+async function restoreSession() {
+  if (!getToken()) return;
+  document.getElementById('login-screen').style.display = 'none';
+  try {
+    const res = await apiFetch('/api/login?action=me');
+    if (res.ok) { startSession(await res.json()); return; }
+  } catch (e) {}
+  setToken(null);
+  document.getElementById('login-screen').style.display = 'flex';
+}
 loadPlumbers();
+restoreSession();
 </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 import { getEmployees, getTodaysJobs, jobsForEmployee, matchEmployee, findJobsByCustomerName, getLineItems } from '../lib/housecall.js';
+import { requireUser } from '../lib/auth.js';
 
 const TOOLS = [
     {
@@ -49,7 +50,10 @@ async function runTool(name, input, plumberName) {
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end();
 
-    const { messages, plumber_name } = req.body;
+    const user = await requireUser(req, res);
+    if (!user) return;
+    const { messages } = req.body;
+    const plumber_name = user.name;
 
     try {
         let workingMessages = [...messages];
