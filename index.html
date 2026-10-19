@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Crew%20Portal%22%2C%22short_name%22%3A%22Crew%22%2C%22theme_color%22%3A%22%230F2148%22%2C%22background_color%22%3A%22%23F6F4EF%22%2C%22display%22%3A%22standalone%22%7D">
 <title>The Local Plumber</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
@@ -620,9 +619,6 @@ table.ref-table td { padding: 12px 14px; border-top: 1px solid var(--line); }
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script>
-const SUPABASE_URL = 'https://dnhcnbloghupybdezuas.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_re8LvhneKPYR-gObFoNUeQ_3NjeoxMY';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 const TOKEN_KEY = 'lp_token';
 function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
@@ -737,7 +733,11 @@ function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
 }
 async function loadConversation() {
-  const { data } = await sb.from('conversations').select('*').eq('plumber_id', currentUser.id).eq('channel', 'assistant').order('created_at', { ascending: true }).limit(50);
+  let data = [];
+  try {
+    const res = await apiFetch('/api/crew?action=conversations');
+    if (res.ok) data = await res.json();
+  } catch (e) { console.error('Could not load chat history:', e.message); }
   if (data && data.length > 0) {
     const messagesEl = document.getElementById('messages');
     messagesEl.innerHTML = '';
@@ -749,20 +749,24 @@ async function loadConversation() {
   }
 }
 async function saveMessage(role, content, imageUrl = null) {
-  await sb.from('conversations').insert({ plumber_id: currentUser.id, role, content, channel: 'assistant', image_url: imageUrl });
+  try {
+    await apiFetch('/api/crew?action=conversation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, content, image_url: imageUrl })
+    });
+  } catch (e) { console.error('Could not save message:', e.message); }
 }
 async function uploadImageToStorage(base64, mediaType) {
   try {
-    const ext = (mediaType.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-    const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const byteChars = atob(base64);
-    const byteNumbers = new Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-    const byteArray = new Uint8Array(byteNumbers);
-    const { error } = await sb.storage.from('chat-images').upload(path, byteArray, { contentType: mediaType });
-    if (error) { console.error('Image upload failed:', error.message); return null; }
-    const { data } = sb.storage.from('chat-images').getPublicUrl(path);
-    return data.publicUrl;
+    const res = await apiFetch('/api/crew?action=chat-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: base64, type: mediaType })
+    });
+    if (!res.ok) { console.error('Image upload failed:', res.status); return null; }
+    const out = await res.json();
+    return out.url || null;
   } catch (err) {
     console.error('Image upload error:', err.message);
     return null;
@@ -813,14 +817,32 @@ async function sendMessage() {
   document.getElementById('send-btn').disabled = false;
   input.focus();
 }
+function downscaleImage(dataUrl, maxSide = 1600, quality = 0.85) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
 function handleImageSelect(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (e) => {
-    const result = e.target.result;
+  reader.onload = async (e) => {
+    let result = e.target.result;
+    let type = file.type;
+    const small = await downscaleImage(result);
+    if (small) { result = small; type = 'image/jpeg'; }
     pendingImageBase64 = result.split(',')[1];
-    pendingImageType = file.type;
+    pendingImageType = type;
     document.getElementById('image-preview').src = result;
     document.getElementById('image-preview-area').style.display = 'block';
   };
@@ -860,8 +882,15 @@ function addMessage(text, type, scroll=true, imageUrl=null) {
   if (scroll) el.scrollIntoView({ behavior: 'smooth' });
   return el;
 }
+function escapeHtml(text) {
+  return String(text == null ? '' : text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 async function loadUpdates() {
-  const { data } = await sb.from('shop_updates').select('*').order('created_at', { ascending: false });
+  let data = [];
+  try {
+    const res = await apiFetch('/api/crew?action=updates');
+    if (res.ok) data = await res.json();
+  } catch (e) { console.error('Could not load updates:', e.message); }
   const area = document.getElementById('bulletin-area');
   if (!data || data.length === 0) { area.innerHTML = '<div class="state-msg">No updates yet. Check back soon.</div>'; return; }
   area.innerHTML = '';
@@ -869,7 +898,7 @@ async function loadUpdates() {
     const card = document.createElement('div');
     card.className = 'update-card';
     const date = new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    card.innerHTML = `<div class="update-header"><div class="update-title">${u.title}</div><div class="update-meta">${u.posted_by}<br>${date}</div></div><div class="update-content">${u.content}</div>`;
+    card.innerHTML = `<div class="update-header"><div class="update-title">${escapeHtml(u.title)}</div><div class="update-meta">${escapeHtml(u.posted_by)}<br>${date}</div></div><div class="update-content" style="white-space:pre-line;">${escapeHtml(u.content)}</div>`;
     area.appendChild(card);
   });
 }
@@ -880,7 +909,16 @@ async function submitUpdate() {
   const title = document.getElementById('post-title').value.trim();
   const content = document.getElementById('post-content').value.trim();
   if (!title || !content) return;
-  await sb.from('shop_updates').insert({ title, content, posted_by: currentUser.name });
+  const res = await apiFetch('/api/crew?action=updates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, content })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    alert(err.error || 'Could not post the update.');
+    return;
+  }
   document.getElementById('post-title').value = '';
   document.getElementById('post-content').value = '';
   togglePostForm();
