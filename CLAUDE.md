@@ -25,7 +25,7 @@ details live in `docs/`. **Never put secrets, PINs, or API keys in this repo or 
 5. **PINs** are salted + peppered scrypt hashes (`PIN_PEPPER` env var). Admin PINs 6-8 digits, crew 4-8. 5 wrong tries on a name = 15 min lockout.
 6. **Do not drop `plumbers.pin` yourself:** `api/login.js` still reads it for people who haven't logged in since hashing began. Ask Claude to remove it once `select count(*) from plumbers where pin is not null` is 0.
 7. **Every database change is a new dated file in `supabase/migrations/`** (never edit an applied one; never leave a hand-run change undocumented). New tables get RLS ON with no public policies.
-8. Planned (Step 7): RLS ON for every table with no public policies (done so far: plumbers, materials_entries, login_attempts).
+8. **Row-level security is ON for every table with no public policies** (done Oct 2026, Step 7). The public key sees nothing and can change nothing; only the server (service-role key) reads/writes. Keep it that way: new tables need RLS ON in the same migration that creates them. Re-check any time with the Supabase security advisor.
 
 ## Environment variables (names only; values live in Vercel)
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `HOUSECALL_API_KEY`, `SESSION_SECRET`, `PIN_PEPPER`, later `CRON_SECRET`. See `.env.example`.
@@ -41,9 +41,9 @@ Losing `PIN_PEPPER` = every PIN must be reset. Rotating `SESSION_SECRET` just lo
 ## Current status
 **Building an admin-only "Office" section** (read-only background agents that write findings; admins can only mark them "seen").
 Full plan: `docs/office-plan.md` (Shamus's revisions are at its top).
-- Milestone 1 (security): steps 1-6 DONE (env secrets, shared DB helper, sessions + admin roles, `api/crew.js` / browser off Supabase, PIN hashing + lockout, migrations baseline).
-  **Next: Step 7** enable RLS on the 9 open tables (`conversations, shop_updates, shop_tools, training_tips, quiz_questions, quiz_results, vehicles, vehicle_service_log, vehicle_issues`) and drop BOTH anonymous storage upload policies ("Anon can upload chat images" and the duplicate "Anon upload chat images"; keep the read policy). Do it as a new migration with rollback SQL ready; check the app on a phone right after.
-- Milestone 2: Office tables + `api/office.js` + Office screens + a fake finding. Then real agents one at a time (one dispatcher function `api/agents/run.js`, one cron entry per agent, read-only enforced in code).
+- **Milestone 1 (security) DONE:** env secrets, shared DB helper, sessions + admin roles, `api/crew.js` / browser off Supabase, PIN hashing + lockout, migrations baseline, RLS on every table + anonymous uploads removed. (Step 7 awaits Shamus's phone check of the whole app.)
+  **Open follow-ups:** (a) photo storage still has an anonymous READ policy that lets the public key list photo folders: remove it and re-test that photo links open; (b) the GitHub repo is PUBLIC and contains the pay formula (`api/paycheck.js`) and business logic: recommend making it private (Shamus's call); (c) drop `plumbers.pin` once everyone has logged in.
+- **Milestone 2 (next):** Office tables + `api/office.js` + Office screens + a fake finding. Then real agents one at a time (one dispatcher function `api/agents/run.js`, one cron entry per agent, read-only enforced in code).
 
 ## Gotchas learned the hard way
 - **iPhone browsers (incl. Chrome) are all WebKit.** A `<button>` with stacked content gets clipped: use `<div role="button" tabindex="0">`. `.card` has `overflow:hidden`, which zeroes a flex/grid item's auto min-size: use `flex-shrink:0` / explicit `min-height`. Use `100dvh`, not `100vh`. Always verify layout changes on a real phone.

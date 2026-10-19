@@ -6,6 +6,7 @@
 |---|---|
 | `20260101000000_baseline_schema.sql` | The database as it was before history began (snapshot Oct 2026). Already in production; recorded as applied, never re-run. Safe to run by accident (`IF NOT EXISTS`). |
 | `20261019165338_pin_hardening.sql` | Hashed PINs + `login_attempts`. Applied. |
+| `20261019172905_enable_rls_lock_public_access.sql` | Row-level security ON for the nine open tables; removes anonymous photo uploads. Applied. **The undo steps are in the file's header.** |
 
 ## Rules for every future database change
 1. **Never change the database by hand-typing SQL and forgetting it.** Put the change in a new file here:
