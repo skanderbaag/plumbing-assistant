@@ -60,6 +60,13 @@ delete from plumbers          where name = 'Firstname';
 ```
 To just block someone without deleting anything: `update plumbers set pin = null, pin_hash = null, pin_salt = null where name = 'Firstname';` (they'll still appear in the name list but can't log in).
 
+## Make any database change (add a table/column, etc.)
+Don't just type it into the SQL Editor and move on: the history would have a gap. Ask Claude, or follow `supabase/README.md`: save the change as a new dated file in `supabase/migrations/`, apply it, and check it shows up with:
+```sql
+select version, name from supabase_migrations.schema_migrations order by version;
+```
+Rebuilding the whole database elsewhere = run the files in `supabase/migrations/` in filename order.
+
 ## Is the old plain-text PIN column finished?
 ```sql
 select count(*) from plumbers where pin is not null;

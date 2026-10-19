@@ -15,7 +15,7 @@ details live in `docs/`. **Never put secrets, PINs, or API keys in this repo or 
 - `api/*.js`: Vercel serverless functions (login, crew, chat, tools, vehicles, training, housecall, paycheck, reports-chat)
 - `lib/db.js`: the ONE way server code talks to Supabase (service-role key). `lib/session.js` signed tokens,
   `lib/auth.js` who's asking + admin check, `lib/pin.js` PIN hashing/rules, `lib/housecall.js` Housecall helpers
-- `supabase/migrations/`: schema history (SQL files). `scripts/`: tests. `docs/`: runbook, changelog, plan
+- `supabase/migrations/`: the database's full history as dated SQL files (read `supabase/README.md` before any DB change). `supabase/legacy/`: old hand-run SQL, reference only. `scripts/`: tests. `docs/`: runbook, changelog, plan
 
 ## Security rules (do not undo)
 1. **The browser never talks to Supabase.** No supabase-js, no keys in `index.html`. Everything goes through `api/*`.
@@ -24,7 +24,8 @@ details live in `docs/`. **Never put secrets, PINs, or API keys in this repo or 
 4. **Tokens:** crew ~30 days, admin 12 hours, PIN-change token 10 minutes. Admin role is re-checked in the DB on every admin request.
 5. **PINs** are salted + peppered scrypt hashes (`PIN_PEPPER` env var). Admin PINs 6-8 digits, crew 4-8. 5 wrong tries on a name = 15 min lockout.
 6. **Do not drop `plumbers.pin` yourself:** `api/login.js` still reads it for people who haven't logged in since hashing began. Ask Claude to remove it once `select count(*) from plumbers where pin is not null` is 0.
-7. Planned: row-level security (RLS) ON for every table with no public policies (tables already done: plumbers, materials_entries, login_attempts).
+7. **Every database change is a new dated file in `supabase/migrations/`** (never edit an applied one; never leave a hand-run change undocumented). New tables get RLS ON with no public policies.
+8. Planned (Step 7): RLS ON for every table with no public policies (done so far: plumbers, materials_entries, login_attempts).
 
 ## Environment variables (names only; values live in Vercel)
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `HOUSECALL_API_KEY`, `SESSION_SECRET`, `PIN_PEPPER`, later `CRON_SECRET`. See `.env.example`.
@@ -40,8 +41,8 @@ Losing `PIN_PEPPER` = every PIN must be reset. Rotating `SESSION_SECRET` just lo
 ## Current status
 **Building an admin-only "Office" section** (read-only background agents that write findings; admins can only mark them "seen").
 Full plan: `docs/office-plan.md` (Shamus's revisions are at its top).
-- Milestone 1 (security): steps 1-5 DONE (env secrets, shared DB helper, sessions + admin roles, `api/crew.js` / browser off Supabase, PIN hashing + lockout).
-  **Next: Step 6** migrations folder baseline -> **Step 7** enable RLS on the 9 open tables (`conversations, shop_updates, shop_tools, training_tips, quiz_questions, quiz_results, vehicles, vehicle_service_log, vehicle_issues`) and drop the storage "Anon can upload chat images" policy.
+- Milestone 1 (security): steps 1-6 DONE (env secrets, shared DB helper, sessions + admin roles, `api/crew.js` / browser off Supabase, PIN hashing + lockout, migrations baseline).
+  **Next: Step 7** enable RLS on the 9 open tables (`conversations, shop_updates, shop_tools, training_tips, quiz_questions, quiz_results, vehicles, vehicle_service_log, vehicle_issues`) and drop BOTH anonymous storage upload policies ("Anon can upload chat images" and the duplicate "Anon upload chat images"; keep the read policy). Do it as a new migration with rollback SQL ready; check the app on a phone right after.
 - Milestone 2: Office tables + `api/office.js` + Office screens + a fake finding. Then real agents one at a time (one dispatcher function `api/agents/run.js`, one cron entry per agent, read-only enforced in code).
 
 ## Gotchas learned the hard way
