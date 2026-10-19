@@ -303,9 +303,19 @@ table.ref-table td { padding: 12px 14px; border-top: 1px solid var(--line); }
       <option value="">Select your name...</option>
     </select>
     <div class="pin-label">Enter your PIN</div>
-    <input class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" id="pin-input" maxlength="4" placeholder="••••" />
+    <input class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" id="pin-input" maxlength="8" placeholder="••••" />
     <button class="login-btn" onclick="doLogin()">Sign in</button>
     <div class="login-error" id="login-error">Incorrect PIN. Try again.</div>
+  </div>
+  <div class="login-card" id="pin-change-card" style="display:none;">
+    <h2>Set a new PIN</h2>
+    <p style="font-size:var(--fs-body);color:var(--text-muted);margin-bottom:16px;line-height:1.45;">For security, admin accounts need a 6&ndash;8 digit PIN. Choose one you'll remember, not a simple run like 123456.</p>
+    <label class="field-label" for="new-pin-input">New PIN</label>
+    <input class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" id="new-pin-input" maxlength="8" placeholder="••••••" />
+    <label class="field-label" for="confirm-pin-input">Type it again</label>
+    <input class="pin-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" id="confirm-pin-input" maxlength="8" placeholder="••••••" />
+    <button class="login-btn" onclick="submitNewPin()">Save PIN and log in</button>
+    <div class="login-error" id="pin-change-error"></div>
   </div>
 </div>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -685,13 +695,66 @@ async function doLogin() {
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
   if (!name || !pin) { errEl.textContent = 'Please select your name and enter your PIN.'; errEl.style.display = 'block'; return; }
-  const res = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, pin })
-  });
-  const data = res.ok ? await res.json() : null;
-  if (!data) { errEl.textContent = 'Incorrect PIN. Try again.'; errEl.style.display = 'block'; return; }
+  let res, data = null;
+  try {
+    res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, pin })
+    });
+    data = await res.json();
+  } catch (e) {
+    errEl.textContent = 'Could not reach the server. Check your connection and try again.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!res.ok || !data) {
+    errEl.textContent = res.status === 401 ? 'Incorrect PIN. Try again.' : ((data && data.error) || 'Something went wrong. Try again.');
+    errEl.style.display = 'block';
+    return;
+  }
+  document.getElementById('pin-input').value = '';
+  if (data.must_change_pin) { pinChangeToken = data.token; showPinChange(); return; }
+  setToken(data.token);
+  delete data.token;
+  startSession(data);
+}
+let pinChangeToken = null;
+function showPinChange() {
+  document.querySelector('#login-screen .login-card').style.display = 'none';
+  document.getElementById('pin-change-card').style.display = 'block';
+  document.getElementById('pin-change-error').style.display = 'none';
+  document.getElementById('new-pin-input').focus();
+}
+function showLoginCard() {
+  pinChangeToken = null;
+  document.getElementById('pin-change-card').style.display = 'none';
+  document.querySelector('#login-screen .login-card').style.display = 'block';
+  document.getElementById('new-pin-input').value = '';
+  document.getElementById('confirm-pin-input').value = '';
+}
+async function submitNewPin() {
+  const errEl = document.getElementById('pin-change-error');
+  const fail = (msg) => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  errEl.style.display = 'none';
+  const newPin = document.getElementById('new-pin-input').value;
+  const confirmPin = document.getElementById('confirm-pin-input').value;
+  if (!/^\d{6,8}$/.test(newPin)) return fail('Your PIN must be 6 to 8 digits (numbers only).');
+  if (newPin !== confirmPin) return fail("The two PINs don't match.");
+  let res, data = null;
+  try {
+    res = await fetch('/api/login?action=change_pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pinChangeToken },
+      body: JSON.stringify({ new_pin: newPin })
+    });
+    data = await res.json();
+  } catch (e) { return fail('Could not reach the server. Try again.'); }
+  if (res.status === 401) { showLoginCard(); const le = document.getElementById('login-error'); le.textContent = 'That took too long. Please log in again.'; le.style.display = 'block'; return; }
+  if (!res.ok) return fail(data.error || 'Could not save your PIN. Try again.');
+  document.getElementById('new-pin-input').value = '';
+  document.getElementById('confirm-pin-input').value = '';
+  showLoginCard();
   setToken(data.token);
   delete data.token;
   startSession(data);
@@ -721,6 +784,7 @@ function startSession(data) {
 }
 function doLogout() {
   setToken(null);
+  showLoginCard();
   currentUser = null;
   conversationHistory = [];
   pendingImageBase64 = null;
@@ -1630,6 +1694,7 @@ document.getElementById('user-input').addEventListener('input', function() {
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
 document.getElementById('pin-input').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('confirm-pin-input').addEventListener('keypress', e => { if (e.key === 'Enter') submitNewPin(); });
 document.getElementById('report-input').addEventListener('keypress', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReportMessage(); }
 });
