@@ -1,0 +1,11 @@
+# Secrets: real values live in Vercel, never in the repo. (.env.example, names only, IS committed.)
+.env
+.env.local
+.env.*.local
+
+# Dependencies and tooling
+node_modules
+.vercel
+
+# macOS
+.DS_Store

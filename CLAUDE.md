@@ -4,7 +4,7 @@ Internal web app for a small plumbing shop (crew phones + office). Owner: Shamus
 details live in `docs/`. **Never put secrets, PINs, or API keys in this repo or these docs.**
 
 ## Where things live
-- **Local folder:** `/Users/macbook/projects/plumbing-assistant`
+- **Local folder:** `/Users/macbook/Desktop/Claude/Local Plumber Website/Journeymen` (moved and renamed from `~/projects/plumbing-assistant`; the GitHub repo is still named `plumbing-assistant`)
 - **GitHub:** `skanderbaag/plumbing-assistant` (push to `main` = deploy)
 - **Vercel:** project `plumbing-assistant` is the ONLY connected project. The duplicate `plumbing-assistant-1u43` was disconnected (Oct 2026). Moving to Vercel Pro / a company account is planned: ask Shamus before touching Git or env vars.
 - **Supabase project ref:** `dnhcnbloghupybdezuas` (Postgres + Storage; the Supabase MCP is usually connected)
